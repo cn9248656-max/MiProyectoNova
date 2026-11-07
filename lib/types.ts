@@ -107,6 +107,39 @@ export interface WalletTx {
   createdAt: string;
 }
 
+/** Datos que el cliente entrega para recibir su producto (ID de Free Fire, etc.). */
+export interface OrderCustomerData {
+  playerId: string;
+  details: string;
+  updatedAt: string;
+}
+
+export type ChatSenderRole = 'USER' | 'ADMIN';
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  senderRole: ChatSenderRole;
+  senderName: string;
+  body: string;
+  readByUser: boolean;
+  readByAdmin: boolean;
+  createdAt: string;
+}
+
+export interface Conversation {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  createdAt: string;
+  lastMessageAt: string | null;
+  lastMessage: string | null;
+  unreadForAdmin: number;
+  unreadForUser: number;
+  messageCount: number;
+}
+
 export interface NotificationItem {
   id: string;
   type: string;

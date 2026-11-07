@@ -160,6 +160,25 @@ function migrate(conn: DB) {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_message_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      sender_role TEXT NOT NULL,
+      sender_id TEXT NOT NULL,
+      body TEXT NOT NULL,
+      read_by_user INTEGER NOT NULL DEFAULT 0,
+      read_by_admin INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
     CREATE INDEX IF NOT EXISTS idx_products_active ON products(active);
     CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
