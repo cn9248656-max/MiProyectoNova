@@ -1,4 +1,4 @@
-import { getUpload } from '../../../lib/store';
+import { getUpload } from '../../../../lib/store';
 
 export const dynamic = 'force-dynamic';
 
