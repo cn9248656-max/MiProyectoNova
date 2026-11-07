@@ -3,7 +3,7 @@
  * Uso: DATA_DIR=/tmp/nova-chat tsx scripts/verify-chat.ts write|read
  */
 import { ensureConversation, conversationForUser, listMessages, sendMessage, unreadForAdmin, unreadForUser } from '../lib/chat';
-import { addToCart, checkout, createCategory, createProduct, createUser, findUserByEmail, listOrders, saveOrderCustomerData } from '../lib/store';
+import { addToCart, checkout, createCategory, createProduct, createUser, findUserByEmail, listCategories, listOrders, saveOrderCustomerData } from '../lib/store';
 
 const EMAIL = 'chat-persistencia@nova.test';
 const mode = process.argv[2];
@@ -28,7 +28,17 @@ if (mode === 'write') {
   if (unreadForUser(user.id) < 1) fail('el cliente no ve la respuesta como no leída');
 
   createCategory('Categoria Chat', '💬');
-  const product = createProduct({ name: 'Diamantes 100', description: 'Paquete de prueba de chat.', priceCents: 500, stock: 10, active: true, featured: false });
+  const category = listCategories().find((item) => item.name === 'Categoria Chat');
+  if (!category) fail('no se creó la categoría');
+  const product = createProduct({
+    name: 'Diamantes 100',
+    description: 'Paquete de prueba de chat.',
+    priceCents: 500,
+    categoryId: category.id,
+    stock: 10,
+    active: true,
+    featured: false,
+  });
   if (!product.ok) fail(`producto: ${product.error}`);
   addToCart(user.id, product.id, 1);
   const order = checkout(user.id, {
