@@ -166,7 +166,7 @@ export default async function AdminDashboard() {
                 <div key={notification.id} className="row row--between" style={{ gap: 10 }}>
                   <div>
                     <strong style={{ fontSize: 13 }}>{notification.title}</strong>
-                    <div className="tiny muted">{notification.body}</div>
+                    <div className="tiny muted">{notification.message}</div>
                   </div>
                   <span className="tiny muted">{formatDate(notification.createdAt)}</span>
                 </div>

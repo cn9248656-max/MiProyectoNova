@@ -44,7 +44,7 @@ export default async function AdminRequestsPage({
                     <div className="tiny muted">
                       {request.userName || 'Cliente'} · {request.userEmail || ''} · {formatDate(request.createdAt)}
                     </div>
-                    {request.details ? <p className="tiny" style={{ marginTop: 6 }}>{request.details}</p> : null}
+                    {request.message ? <p className="tiny" style={{ marginTop: 6 }}>{request.message}</p> : null}
                   </div>
                   <form action={resolveRequestAction}>
                     <input type="hidden" name="requestId" value={request.id} />

@@ -2,9 +2,9 @@
 
 import { useActionState } from 'react';
 import { settingsAction } from '../app/actions';
-import type { ActionState, Settings } from '../lib/types';
+import type { ActionState, StoreSettings } from '../lib/types';
 
-export default function SettingsForm({ settings }: { settings: Settings }) {
+export default function SettingsForm({ settings }: { settings: StoreSettings }) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(settingsAction, null);
 
   return (

@@ -42,8 +42,8 @@ export default async function AdminSettingsPage() {
               </strong>
             </div>
             <div className="kv">
-              <span>Última actualización</span>
-              <strong className="tiny">{formatDate(settings.updatedAt)}</strong>
+              <span>Titular Agora</span>
+              <strong className="tiny">{settings.agoraHolder || 'Sin configurar'}</strong>
             </div>
           </section>
 
