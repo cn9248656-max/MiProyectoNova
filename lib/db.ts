@@ -187,7 +187,19 @@ function migrate(conn: DB) {
     CREATE INDEX IF NOT EXISTS idx_topups_status ON topups(status);
     CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_transactions(user_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+    CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_conversations_last ON conversations(last_message_at);
   `);
+
+  // Datos de entrega del cliente (ID de Free Fire y otros datos) por pedido.
+  ensureColumn(conn, 'orders', 'customer_data', 'TEXT');
+}
+
+/** Migración no destructiva: agrega la columna sólo si la base ya existente no la tiene. */
+function ensureColumn(conn: DB, table: string, column: string, ddl: string) {
+  const columns = conn.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (columns.some((item) => item.name === column)) return;
+  conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
 }
 
 export function id(prefix = ''): string {
