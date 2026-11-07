@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getAdminUser, getCurrentUser } from '../../../../lib/auth';
-import * as chat from '../../../../lib/chat';
+import { getAdminUser, getCurrentUser } from '../../../lib/auth';
+import * as chat from '../../../lib/chat';
 
 export const dynamic = 'force-dynamic';
 
