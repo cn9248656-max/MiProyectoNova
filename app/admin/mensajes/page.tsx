@@ -138,7 +138,7 @@ export default async function AdminMessagesPage({
                             </div>
                           ) : null}
                           <p className="tiny muted" style={{ margin: '6px 0 0' }}>
-                            {order.items.map((item) => `${item.quantity}× ${item.name}`).join(' · ')} —{' '}
+                            {(order.items ?? []).map((item) => `${item.quantity}× ${item.name}`).join(' · ')} —{' '}
                             {formatMoney(order.totalCents, settings.currency)}
                           </p>
                         </div>
