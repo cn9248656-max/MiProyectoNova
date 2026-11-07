@@ -140,6 +140,27 @@ export default async function OrderDetailPage({
           </p>
         </section>
       </div>
+
+      <section className="card">
+        <div className="row row--between row--wrap">
+          <h2 className="card__title" style={{ margin: 0 }}>
+            Datos de entrega
+          </h2>
+          <Link className="btn btn--ghost btn--sm" href="/mensajes">
+            Hablar con el administrador
+          </Link>
+        </div>
+        <p className="hint" style={{ marginTop: 6 }}>
+          Indica tu ID de jugador (Free Fire u otro) y los datos que necesite el administrador para entregarte el
+          producto. Se guardan en tu pedido y puedes corregirlos cuando quieras.
+        </p>
+        <OrderDeliveryForm orderId={order.id} data={order.customerData} />
+        {order.customerData?.updatedAt ? (
+          <p className="tiny muted" style={{ marginBottom: 0 }}>
+            Última actualización: {formatDate(order.customerData.updatedAt)}
+          </p>
+        ) : null}
+      </section>
     </div>
   );
 }

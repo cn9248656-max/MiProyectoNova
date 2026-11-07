@@ -16,7 +16,7 @@ const LINKS = [
   { href: '/admin/configuracion', label: 'Configuración', icon: '⚙' },
 ];
 
-export default function AdminNav({ unread }: { unread: number }) {
+export default function AdminNav({ unread, chatUnread = 0 }: { unread: number; chatUnread?: number }) {
   const pathname = usePathname();
 
   return (
@@ -29,6 +29,9 @@ export default function AdminNav({ unread }: { unread: number }) {
             <span>{link.label}</span>
             {link.href === '/admin/notificaciones' && unread > 0 ? (
               <span className="badge-dot" data-count={unread} />
+            ) : null}
+            {link.href === '/admin/mensajes' && chatUnread > 0 ? (
+              <span className="badge-dot" data-count={chatUnread} />
             ) : null}
           </Link>
         );

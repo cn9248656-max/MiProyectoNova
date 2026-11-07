@@ -4,6 +4,7 @@ import { logoutAction } from '../../app/actions';
 import { PasswordForm, ProductRequestForm, ProfileForm } from '../../components/ProfileForms';
 import { getCurrentUser } from '../../lib/auth';
 import { formatDate, formatMoney } from '../../lib/money';
+import * as chat from '../../lib/chat';
 import { getSettings, listWallet } from '../../lib/store';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,7 @@ export default async function AccountPage() {
 
   const settings = getSettings();
   const movements = listWallet(user.id, 40);
+  const unreadMessages = chat.unreadForUser(user.id);
 
   return (
     <div className="stack" style={{ gap: 22 }}>
@@ -65,6 +67,9 @@ export default async function AccountPage() {
           <div className="form-actions" style={{ marginTop: 16 }}>
             <Link className="btn btn--sm" href="/saldo">
               Añadir saldo
+            </Link>
+            <Link className="btn btn--ghost btn--sm" href="/mensajes">
+              Mensajes{unreadMessages > 0 ? ` (${unreadMessages})` : ''}
             </Link>
             {user.role === 'ADMIN' ? (
               <Link className="btn btn--ghost btn--sm" href="/admin">

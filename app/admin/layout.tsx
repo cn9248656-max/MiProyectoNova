@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import AdminNav from '../../components/AdminNav';
 import { getCurrentUser } from '../../lib/auth';
+import * as chat from '../../lib/chat';
 import { getSettings, unreadNotifications } from '../../lib/store';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const settings = getSettings();
   const unread = unreadNotifications();
+  const chatUnread = chat.unreadForAdmin();
 
   return (
     <div className="admin-shell">
@@ -25,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </Link>
 
-        <AdminNav unread={unread} />
+        <AdminNav unread={unread} chatUnread={chatUnread} />
 
         <div className="admin-side__footer">
           <Link className="btn btn--ghost btn--sm btn--block" href="/">
