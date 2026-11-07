@@ -16,7 +16,7 @@ COPY package.json package-lock.json tsconfig.json next.config.mjs ./
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
-COPY middleware.ts ./middleware.ts
+COPY proxy.ts ./proxy.ts
 RUN npm run build
 
 # Etapa 3: ejecución
