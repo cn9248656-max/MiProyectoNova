@@ -27,10 +27,10 @@ export default async function LoginPage({
           </span>
         </Link>
         <h1 className="page-title" style={{ fontSize: 24 }}>
-          Bienvenido de nuevo
+          Iniciar sesión
         </h1>
         <p className="page-subtitle" style={{ marginBottom: 20 }}>
-          Accede a tu billetera, tus compras y tu saldo en {settings.storeName}.
+          Bienvenido de nuevo. Accede a tu billetera, tus compras y tu saldo en {settings.storeName}.
         </p>
         <AuthForm mode="login" next={params.next} />
       </div>
