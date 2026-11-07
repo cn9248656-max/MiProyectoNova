@@ -72,6 +72,7 @@ export interface Order {
   paymentStatus: PaymentStatus;
   reference: string | null;
   note: string | null;
+  customerData: OrderCustomerData | null;
   createdAt: string;
   updatedAt: string;
   itemsCount: number;
