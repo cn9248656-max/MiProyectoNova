@@ -5,9 +5,7 @@ import { redirect } from 'next/navigation';
 import { clearSessionCookie, getAdminUser, getCurrentUser, setSessionCookie } from '../lib/auth';
 import { parseAmountToCents } from '../lib/money';
 import * as store from '../lib/store';
-import type { OrderStatus, PaymentMethod } from '../lib/types';
-
-export type ActionState = { error?: string; success?: string } | null;
+import type { ActionState, OrderStatus, PaymentMethod } from '../lib/types';
 
 function str(formData: FormData, key: string): string {
   const value = formData.get(key);

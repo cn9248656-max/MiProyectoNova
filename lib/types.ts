@@ -1,5 +1,7 @@
 /** Tipos puros compartidos entre servidor y cliente (sin dependencias de Node). */
 
+export type ActionState = { error?: string; success?: string } | null;
+
 export type Role = 'USER' | 'ADMIN';
 export type OrderStatus = 'PENDING' | 'APPROVED' | 'SENT' | 'COMPLETED' | 'CANCELLED';
 export type PaymentMethod = 'BALANCE' | 'AGORA';
