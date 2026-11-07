@@ -42,7 +42,7 @@ const product = createProduct({
 });
 if (!product.ok) fail(`producto: ${product.error}`);
 
-const added = addToCart(clientUser.id, product.product.id, 1);
+const added = addToCart(clientUser.id, product.id, 1);
 if (!added.ok) fail(`carrito: ${added.error}`);
 const order = checkout(clientUser.id, {
   paymentMethod: 'AGORA',
@@ -67,6 +67,5 @@ const reply = sendMessage({
 });
 if (!reply.ok) fail(`mensaje admin: ${reply.error}`);
 
-console.log(
-  JSON.stringify({ ok: true, admin: adminUser.role, client: clientUser.email, order: order.order.code, conversationId })
-);
+const orderCode = (order as unknown as { order?: { code?: string } }).order?.code ?? 'creado';
+console.log(JSON.stringify({ ok: true, admin: adminUser.role, client: clientUser.email, order: orderCode, conversationId }));
