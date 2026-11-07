@@ -94,6 +94,31 @@ export default function CheckoutForm({
         </div>
       ) : null}
 
+      <div className="card card--flat" style={{ padding: 14 }}>
+        <p className="tiny muted" style={{ marginTop: 0 }}>
+          Datos para recibir tu producto. El administrador los verá en tu pedido y podrá responderte por el chat privado.
+        </p>
+        <div className="field">
+          <label className="label" htmlFor="playerId">
+            ID de jugador / Free Fire <span className="muted tiny">(si aplica)</span>
+          </label>
+          <input className="input" id="playerId" name="playerId" placeholder="Ej. 1234567890" maxLength={120} />
+        </div>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label className="label" htmlFor="customerDetails">
+            Otros datos necesarios <span className="muted tiny">(opcional)</span>
+          </label>
+          <textarea
+            className="textarea"
+            id="customerDetails"
+            name="customerDetails"
+            rows={2}
+            placeholder="Correo de la cuenta, plataforma, región…"
+            maxLength={600}
+          />
+        </div>
+      </div>
+
       <div className="field">
         <label className="label" htmlFor="note">
           Nota para el administrador <span className="muted tiny">(opcional)</span>
