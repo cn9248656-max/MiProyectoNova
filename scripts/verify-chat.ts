@@ -42,7 +42,8 @@ if (mode === 'write') {
   if (!product.ok) fail(`producto: ${product.error}`);
   addToCart(user.id, product.id, 1);
   const order = checkout(user.id, {
-    paymentMethod: 'BALANCE',
+    paymentMethod: 'AGORA',
+    reference: 'AGORA-CHAT-TEST',
     customerData: { playerId: '123456789', details: 'Servidor LATAM' },
   });
   if (!order.ok) fail(`checkout: ${order.error}`);
