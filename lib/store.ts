@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { db, id, now } from './db';
+import { ensureConversation } from './chat';
 import type {
   AdminStats,
   AdminUser,
@@ -7,6 +8,7 @@ import type {
   Category,
   NotificationItem,
   Order,
+  OrderCustomerData,
   OrderItem,
   OrderStatus,
   PaymentMethod,
@@ -551,6 +553,28 @@ function orderCode(): string {
   return `NV-${id().slice(0, 6).toUpperCase()}`;
 }
 
+function parseCustomerData(value: unknown): OrderCustomerData | null {
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<OrderCustomerData>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      playerId: typeof parsed.playerId === 'string' ? parsed.playerId : '',
+      details: typeof parsed.details === 'string' ? parsed.details : '',
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function serializeCustomerData(data?: { playerId?: string; details?: string }): string | null {
+  const playerId = data?.playerId?.trim().slice(0, 120) || '';
+  const details = data?.details?.trim().slice(0, 600) || '';
+  if (!playerId && !details) return null;
+  return JSON.stringify({ playerId, details, updatedAt: now() } satisfies OrderCustomerData);
+}
+
 function mapOrder(row: Row): Order {
   return {
     id: str(row.id),
@@ -563,6 +587,7 @@ function mapOrder(row: Row): Order {
     paymentStatus: str(row.payment_status, 'PENDING') as Order['paymentStatus'],
     reference: (row.reference as string | null) ?? null,
     note: (row.note as string | null) ?? null,
+    customerData: parseCustomerData(row.customer_data),
     createdAt: str(row.created_at),
     updatedAt: str(row.updated_at),
     itemsCount: num(row.items_count),
@@ -573,7 +598,12 @@ function mapOrder(row: Row): Order {
 
 export function checkout(
   userId: string,
-  input: { paymentMethod: PaymentMethod; note?: string; reference?: string }
+  input: {
+    paymentMethod: PaymentMethod;
+    note?: string;
+    reference?: string;
+    customerData?: { playerId?: string; details?: string };
+  }
 ): { ok: true; orderId: string; code: string } | { ok: false; error: string } {
   const settings = getSettings();
   const user = getUserById(userId);
@@ -637,8 +667,8 @@ export function checkout(
     const stamp = now();
     db()
       .prepare(
-        `INSERT INTO orders (id, code, user_id, subtotal_cents, total_cents, status, payment_method, payment_status, reference, note, created_at, updated_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
+        `INSERT INTO orders (id, code, user_id, subtotal_cents, total_cents, status, payment_method, payment_status, reference, note, customer_data, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
       )
       .run(
         orderId,
@@ -651,6 +681,7 @@ export function checkout(
         input.paymentMethod === 'BALANCE' ? 'PAID' : 'PENDING',
         input.reference?.trim() || null,
         input.note?.trim().slice(0, 400) || null,
+        serializeCustomerData(input.customerData),
         stamp,
         stamp
       );
@@ -693,6 +724,11 @@ export function checkout(
 
   try {
     tx.immediate();
+    try {
+      ensureConversation(userId);
+    } catch {
+      // Si falla aquí, la conversación se crea al abrir el chat.
+    }
     return result;
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'No se pudo completar la compra.' };
@@ -1068,4 +1104,19 @@ export function adminStats(): AdminStats {
     revenueCents: one("SELECT COALESCE(SUM(total_cents), 0) AS c FROM orders WHERE status != 'CANCELLED'"),
     walletTotalCents: one('SELECT COALESCE(SUM(balance_cents), 0) AS c FROM users'),
   };
+}
+
+/** El cliente completa o corrige los datos de entrega de su pedido. */
+export function saveOrderCustomerData(
+  orderId: string,
+  userId: string,
+  data: { playerId?: string; details?: string }
+): { ok: boolean; error?: string } {
+  const order = db().prepare('SELECT id, user_id FROM orders WHERE id = ?').get(orderId) as Row | undefined;
+  if (!order) return { ok: false, error: 'El pedido no existe.' };
+  if (str(order.user_id) !== userId) return { ok: false, error: 'No puedes modificar este pedido.' };
+  db()
+    .prepare('UPDATE orders SET customer_data = ?, updated_at = ? WHERE id = ?')
+    .run(serializeCustomerData(data), now(), orderId);
+  return { ok: true };
 }
