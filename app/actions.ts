@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { clearSessionCookie, getAdminUser, getCurrentUser, setSessionCookie } from '../lib/auth';
 import { parseAmountToCents } from '../lib/money';
+import * as chat from '../lib/chat';
 import * as store from '../lib/store';
 import type { ActionState, OrderStatus, PaymentMethod } from '../lib/types';
 
@@ -137,6 +138,10 @@ export async function checkoutAction(_prev: ActionState, formData: FormData): Pr
     paymentMethod,
     note: str(formData, 'note'),
     reference: str(formData, 'reference'),
+    customerData: {
+      playerId: str(formData, 'playerId'),
+      details: str(formData, 'customerDetails'),
+    },
   });
 
   if (!result.ok) return { error: result.error };
@@ -336,4 +341,66 @@ export async function settingsAction(_prev: ActionState, formData: FormData): Pr
   revalidatePath('/', 'layout');
   revalidatePath('/admin/configuracion');
   return { success: 'Configuración guardada. Los cambios ya están activos.' };
+}
+
+/* ------------------------------------------------------------------ */
+/* Chat cliente <-> administrador                                     */
+/* ------------------------------------------------------------------ */
+
+export async function sendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const conversation = chat.conversationForUser(user.id);
+  if (!conversation) return { error: 'No se pudo abrir la conversación.' };
+
+  const result = chat.sendMessage({
+    conversationId: conversation.id,
+    senderId: user.id,
+    senderRole: 'USER',
+    body: str(formData, 'body'),
+  });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath('/mensajes');
+  revalidatePath('/admin/mensajes');
+  revalidatePath('/', 'layout');
+  return { success: 'Mensaje enviado.' };
+}
+
+export async function adminSendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const admin = await requireAdmin();
+  const conversationId = str(formData, 'conversationId');
+  if (!conversationId) return { error: 'Selecciona una conversación.' };
+
+  const result = chat.sendMessage({
+    conversationId,
+    senderId: admin.id,
+    senderRole: 'ADMIN',
+    body: str(formData, 'body'),
+  });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath('/admin/mensajes');
+  revalidatePath('/mensajes');
+  revalidatePath('/', 'layout');
+  return { success: 'Mensaje enviado al cliente.' };
+}
+
+export async function saveDeliveryDataAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const orderId = str(formData, 'orderId');
+  const playerId = str(formData, 'playerId');
+
+  if (!playerId.trim()) return { error: 'Escribe tu ID de jugador o el dato que necesites enviar.' };
+
+  const result = store.saveOrderCustomerData(orderId, user.id, {
+    playerId,
+    details: str(formData, 'details'),
+  });
+  if (!result.ok) return { error: result.error || 'No se pudieron guardar los datos.' };
+
+  revalidatePath(`/compras/${orderId}`);
+  revalidatePath('/compras');
+  revalidatePath('/admin/pedidos');
+  revalidatePath('/admin/mensajes');
+  return { success: 'Datos guardados. El administrador ya puede verlos.' };
 }
