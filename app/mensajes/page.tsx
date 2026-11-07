@@ -92,7 +92,7 @@ export default async function MessagesPage() {
                 {orders.map((order) => (
                   <Link key={order.id} className="mini-row" href={`/compras/${order.id}`}>
                     <span className="mono tiny">{order.code}</span>
-                    <span className="tiny muted">{order.items.length} artículo(s)</span>
+                    <span className="tiny muted">{(order.items ?? []).length} artículo(s)</span>
                   </Link>
                 ))}
               </div>
