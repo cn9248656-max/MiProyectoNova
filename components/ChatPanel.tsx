@@ -136,8 +136,8 @@ export default function ChatPanel({
         </button>
       </form>
 
-      {state?.error ? <p className="alert error">{state.error}</p> : null}
-      {state?.success ? <p className="alert ok">{state.success}</p> : null}
+      {state?.error ? <p className="alert alert--error">{state.error}</p> : null}
+      {state?.success ? <p className="alert alert--success">{state.success}</p> : null}
     </section>
   );
 }
