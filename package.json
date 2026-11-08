@@ -8,7 +8,9 @@
     "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "tsc --noEmit",
     "backup": "tsx scripts/backup.ts",
-    "verify:backup": "tsx scripts/verify-backup.ts"
+    "verify:backup": "tsx scripts/verify-backup.ts",
+    "snapshot:catalogo": "tsx scripts/snapshot-catalog.ts",
+    "verify:restore": "tsx scripts/verify-restore.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",

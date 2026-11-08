@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import Database from 'better-sqlite3';
 import { DATA_DIR, DB_FILE } from './paths';
-import { createSnapshot } from './backup';
+import { createSnapshot, listBackups } from './backup';
+import { restoreCatalogOnBoot } from './catalog-recovery';
 
 export type DB = Database.Database;
 
