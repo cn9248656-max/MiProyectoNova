@@ -36,7 +36,7 @@ function main() {
 
   const rows = conn
     .prepare(
-      `SELECT p.id, p.name, p.description, p.price_cents, p.stock, p.featured, p.image_id, c.slug AS category_slug
+      `SELECT p.id, p.name, p.description, p.price_cents, p.stock, p.unlimited_stock, p.featured, p.image_id, c.slug AS category_slug
          FROM products p
          LEFT JOIN categories c ON c.id = p.category_id
         ORDER BY p.created_at, p.name`
@@ -62,6 +62,7 @@ function main() {
       description: String(row.description ?? ''),
       priceCents: Number(row.price_cents ?? 0),
       stock: Number(row.stock ?? 0),
+      unlimitedStock: Number(row.unlimited_stock ?? 0) === 1,
       featured: Number(row.featured ?? 0) === 1,
       categorySlug: row.category_slug ? String(row.category_slug) : '',
       image,
@@ -93,6 +94,7 @@ export type SnapshotProduct = {
   description: string;
   priceCents: number;
   stock: number;
+  unlimitedStock?: boolean;
   featured: boolean;
   categorySlug: string;
   image: SnapshotImage | null;

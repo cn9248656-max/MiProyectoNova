@@ -88,8 +88,8 @@ export function restoreMissingCatalog(conn: DB, options: { dryRun?: boolean } = 
   );
   const insertProduct = conn.prepare(
     `INSERT INTO products
-       (id, name, description, price_cents, category_id, image_id, stock, active, featured, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+       (id, name, description, price_cents, category_id, image_id, stock, unlimited_stock, active, featured, created_at, updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
   );
 
   for (const product of missing) {
@@ -113,6 +113,7 @@ export function restoreMissingCatalog(conn: DB, options: { dryRun?: boolean } = 
         categoryId,
         imageId,
         product.stock,
+        product.unlimitedStock ? 1 : 0,
         1,
         product.featured ? 1 : 0,
         now,
