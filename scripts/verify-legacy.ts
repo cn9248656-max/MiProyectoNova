@@ -60,7 +60,7 @@ async function main() {
   ok(`tablas disponibles: ${tables.length}`);
 
   const backups = listBackups();
-  const preMigration = backups.find((backup) => backup.reason.includes('pre-migracion'));
+  const preMigration = backups.find((backup) => backup.name.includes('pre-migracion'));
   if (!preMigration) fail('no se creó la copia previa a la migración');
   if (!preMigration.healthy) fail('la copia previa a la migración no es válida');
   if (preMigration.counts?.products !== 2) fail('la copia previa no contiene los 2 productos');

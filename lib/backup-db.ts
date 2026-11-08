@@ -93,7 +93,7 @@ export function restoreFromBuffer(buffer: Buffer): {
     const products = Number(
       (conn.prepare('SELECT COUNT(*) AS c FROM products').get() as { c: number }).c
     );
-    return { ok: true, safetyBackup, counts };
+    return { ok: true, safetyBackup, counts: counts ?? undefined };
   } catch (error) {
     return {
       ok: false,
