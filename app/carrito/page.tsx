@@ -77,7 +77,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
                         type="number"
                         name="quantity"
                         min={0}
-                        max={line.stock}
+                        max={line.unlimitedStock ? 99 : line.stock}
                         defaultValue={line.quantity}
                         aria-label={`Cantidad de ${line.name}`}
                       />

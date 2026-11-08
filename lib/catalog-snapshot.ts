@@ -14,6 +14,7 @@ export type SnapshotProduct = {
   description: string;
   priceCents: number;
   stock: number;
+  unlimitedStock?: boolean;
   featured: boolean;
   categorySlug: string;
   image: SnapshotImage | null;

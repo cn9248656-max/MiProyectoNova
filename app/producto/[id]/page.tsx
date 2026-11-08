@@ -18,7 +18,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     .filter((item) => item.id !== product.id)
     .slice(0, 3);
 
-  const outOfStock = product.stock <= 0;
+  const unlimited = product.unlimitedStock;
+  const outOfStock = !unlimited && product.stock <= 0;
   const canAfford = Boolean(user && user.balanceCents >= product.priceCents);
 
   return (
@@ -44,9 +45,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <p className="detail__desc">{product.description}</p>
 
           <div className="detail__price">{formatMoney(product.priceCents, settings.currency)}</div>
-          <span className={`stock-line ${outOfStock ? 'stock-dot--out' : product.stock <= 3 ? 'stock-dot--low' : ''}`}>
+          <span className={`stock-line ${unlimited ? '' : outOfStock ? 'stock-dot--out' : product.stock <= 3 ? 'stock-dot--low' : ''}`}>
             <i className="stock-dot" />
-            {outOfStock ? 'Producto agotado' : `${product.stock} unidades disponibles`}
+            {unlimited ? '∞ Stock ilimitado' : outOfStock ? 'Producto agotado' : `${product.stock} unidades disponibles`}
           </span>
 
           <form action={addToCartAction} className="form-actions" style={{ marginTop: 20 }}>
@@ -58,7 +59,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 type="number"
                 name="quantity"
                 min={1}
-                max={Math.max(product.stock, 1)}
+                max={unlimited ? 99 : Math.max(product.stock, 1)}
                 defaultValue={1}
                 aria-label="Cantidad"
                 disabled={outOfStock}

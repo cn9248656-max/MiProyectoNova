@@ -87,7 +87,11 @@ export default async function AdminProductsPage({
                     <td className="tiny">{product.categoryName}</td>
                     <td className="mono">{formatMoney(product.priceCents, settings.currency)}</td>
                     <td>
-                      <span className={product.stock <= 3 ? 'status status--pending' : 'status'}>{product.stock}</span>
+                      {product.unlimitedStock ? (
+                        <span className="status status--approved">∞ Ilimitado</span>
+                      ) : (
+                        <span className={product.stock <= 3 ? 'status status--pending' : 'status'}>{product.stock}</span>
+                      )}
                     </td>
                     <td>
                       <span className={product.active ? 'status status--approved' : 'status status--cancelled'}>
