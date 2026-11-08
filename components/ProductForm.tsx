@@ -95,6 +95,19 @@ export default function ProductForm({
             defaultValue={product?.stock ?? 10}
             required
           />
+          <label className="checkbox" htmlFor="product-unlimited" style={{ marginTop: 10 }}>
+            <input
+              id="product-unlimited"
+              name="unlimited"
+              type="checkbox"
+              defaultChecked={Boolean(product?.unlimitedStock)}
+            />
+            <span>Ilimitado (∞)</span>
+          </label>
+          <span className="hint">
+            Con «Ilimitado (∞)» el producto siempre está disponible y no se descuenta stock. El número
+            de arriba se conserva para cuando vuelvas a stock numérico.
+          </span>
         </div>
       </div>
 

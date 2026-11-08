@@ -1126,7 +1126,7 @@ export function adminStats(): AdminStats {
   return {
     users: one('SELECT COUNT(*) AS c FROM users'),
     products: one('SELECT COUNT(*) AS c FROM products'),
-    lowStock: one('SELECT COUNT(*) AS c FROM products WHERE active = 1 AND stock <= 3'),
+    lowStock: one('SELECT COUNT(*) AS c FROM products WHERE active = 1 AND unlimited_stock = 0 AND stock <= 3'),
     pendingOrders: one("SELECT COUNT(*) AS c FROM orders WHERE status = 'PENDING'"),
     pendingTopups: one("SELECT COUNT(*) AS c FROM topups WHERE status = 'PENDING'"),
     openRequests: one("SELECT COUNT(*) AS c FROM product_requests WHERE status = 'OPEN'"),

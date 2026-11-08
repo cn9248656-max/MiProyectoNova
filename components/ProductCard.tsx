@@ -4,7 +4,8 @@ import type { Product } from '../lib/types';
 import { addToCartAction } from '../app/actions';
 
 export default function ProductCard({ product, currency }: { product: Product; currency: string }) {
-  const outOfStock = product.stock <= 0;
+  const unlimited = product.unlimitedStock;
+  const outOfStock = !unlimited && product.stock <= 0;
 
   return (
     <article className="product-card">
@@ -37,9 +38,9 @@ export default function ProductCard({ product, currency }: { product: Product; c
           </form>
         </div>
 
-        <span className={`stock-line ${outOfStock ? 'stock-dot--out' : product.stock <= 3 ? 'stock-dot--low' : ''}`}>
+        <span className={`stock-line ${unlimited ? '' : outOfStock ? 'stock-dot--out' : product.stock <= 3 ? 'stock-dot--low' : ''}`}>
           <i className="stock-dot" />
-          {outOfStock ? 'Sin stock' : `${product.stock} disponibles`}
+          {unlimited ? '∞ Stock ilimitado' : outOfStock ? 'Sin stock' : `${product.stock} disponibles`}
         </span>
       </div>
     </article>

@@ -213,6 +213,8 @@ export async function productSaveAction(_prev: ActionState, formData: FormData):
   const productId = str(formData, 'productId');
   const priceCents = parseAmountToCents(str(formData, 'price'));
   const stock = Number.parseInt(str(formData, 'stock') || '0', 10);
+  // Opción «Ilimitado (∞)»: el stock numérico se conserva por si vuelve a modo limitado.
+  const unlimitedStock = str(formData, 'unlimited') === 'on';
 
   if (priceCents === null) return { error: 'Escribe un precio válido.' };
   if (!Number.isFinite(stock) || stock < 0) return { error: 'El stock debe ser un número igual o mayor a cero.' };
@@ -231,6 +233,7 @@ export async function productSaveAction(_prev: ActionState, formData: FormData):
     priceCents,
     categoryId: str(formData, 'categoryId'),
     stock,
+    unlimitedStock,
     imageId,
     active: str(formData, 'active') === 'on',
     featured: str(formData, 'featured') === 'on',
