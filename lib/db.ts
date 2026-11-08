@@ -31,7 +31,37 @@ export function db(): DB {
   migrate(conn);
   seed(conn);
   global.__novaDb = conn;
+  // Repone los productos del catálogo guardado que falten. Solo agrega: nunca
+  // borra, reemplaza ni sobrescribe datos existentes.
+  try {
+    restoreCatalogOnBoot(conn);
+  } catch (error) {
+    console.error('[nova] La recuperación del catálogo no se pudo completar:', error);
+  }
+  maybeAutoBackup(conn);
   return conn;
+}
+
+/** Copia automática de la tienda como máximo cada 6 horas. */
+const AUTO_BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Crea una copia de seguridad automática si la última tiene más de 6 horas.
+ * Se omite durante la compilación y jamás interrumpe el arranque si falla.
+ */
+function maybeAutoBackup(conn: DB) {
+  if (process.env.NOVA_AUTO_BACKUP === '0') return;
+  if (process.env.NEXT_PHASE === 'phase-production-build') return;
+  try {
+    const total = Number((conn.prepare('SELECT COUNT(*) AS c FROM products').get() as { c: number }).c);
+    if (total === 0) return;
+    const last = listBackups()[0];
+    if (last && Date.now() - new Date(last.createdAt).getTime() < AUTO_BACKUP_INTERVAL_MS) return;
+    const info = createSnapshot('automatica');
+    console.log(`[nova] Copia automática creada: ${info.name} (${info.counts.products} productos).`);
+  } catch (error) {
+    console.error('[nova] La copia automática no se pudo crear:', error);
+  }
 }
 
 /** Cierra la conexión compartida. Solo se usa al restaurar una copia de seguridad. */
