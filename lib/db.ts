@@ -20,15 +20,87 @@ declare global {
 export function db(): DB {
   if (global.__novaDb) return global.__novaDb;
   fs.mkdirSync(DATA_DIR, { recursive: true });
+  const existed = fs.existsSync(DB_FILE);
   const conn = new Database(DB_FILE);
   conn.pragma('journal_mode = WAL');
   conn.pragma('synchronous = FULL');
   conn.pragma('foreign_keys = ON');
   conn.pragma('busy_timeout = 8000');
+  if (existed) protectBeforeMigration(conn);
   migrate(conn);
   seed(conn);
   global.__novaDb = conn;
   return conn;
+}
+
+/** Cierra la conexión compartida. Solo se usa al restaurar una copia de seguridad. */
+export function closeDb(): void {
+  const conn = global.__novaDb;
+  if (!conn) return;
+  try {
+    conn.pragma('wal_checkpoint(TRUNCATE)');
+  } catch {
+    /* el checkpoint es una optimización: el cierre continúa igual */
+  }
+  conn.close();
+  global.__novaDb = undefined;
+}
+
+const EXPECTED_TABLES = [
+  'users',
+  'categories',
+  'uploads',
+  'products',
+  'cart_items',
+  'orders',
+  'order_items',
+  'topups',
+  'wallet_transactions',
+  'settings',
+  'product_requests',
+  'notifications',
+  'conversations',
+  'messages',
+];
+
+const EXPECTED_COLUMNS: Array<[string, string]> = [['orders', 'customer_data']];
+
+/** Cambios de esquema pendientes sobre una base ya existente (solo aditivos). */
+function pendingChanges(conn: DB): string[] {
+  const pending: string[] = [];
+  const tables = new Set(
+    (conn.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>).map(
+      (row) => row.name
+    )
+  );
+  for (const table of EXPECTED_TABLES) {
+    if (!tables.has(table)) pending.push(`tabla ${table}`);
+  }
+  for (const [table, column] of EXPECTED_COLUMNS) {
+    if (!tables.has(table)) continue;
+    const columns = conn.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some((item) => item.name === column)) pending.push(`columna ${table}.${column}`);
+  }
+  return pending;
+}
+
+/**
+ * Si hay que actualizar el esquema, primero se guarda una copia completa.
+ * Si la copia fallara, la actualización de esquema se detiene: los datos
+ * existentes nunca se tocan sin respaldo.
+ */
+function protectBeforeMigration(conn: DB) {
+  const pending = pendingChanges(conn);
+  if (pending.length === 0) return;
+  try {
+    const info = createSnapshot('pre-migracion');
+    console.log(`[nova] Copia previa a la migración creada: ${info.name} (${pending.join(', ')})`);
+  } catch (error) {
+    console.error('[nova] No se pudo crear la copia previa a la migración:', error);
+    throw new Error(
+      'Se canceló la actualización del esquema porque no se pudo crear la copia de seguridad previa.'
+    );
+  }
 }
 
 function migrate(conn: DB) {
