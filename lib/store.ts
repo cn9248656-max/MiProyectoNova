@@ -358,6 +358,7 @@ export function createProduct(input: ProductInput): { ok: true; id: string } | {
       input.categoryId,
       input.imageId || null,
       input.stock,
+      input.unlimitedStock ? 1 : 0,
       input.active ? 1 : 0,
       input.featured ? 1 : 0,
       stamp,
@@ -458,12 +459,15 @@ export function cartSummary(userId: string): { lines: CartLine[]; totalCents: nu
 export function addToCart(userId: string, productId: string, quantity = 1): { ok: boolean; error?: string } {
   const product = getProduct(productId);
   if (!product || !product.active) return { ok: false, error: 'Producto no disponible.' };
-  if (product.stock <= 0) return { ok: false, error: 'Producto agotado. Puedes solicitar aviso al administrador.' };
+  if (!product.unlimitedStock && product.stock <= 0) {
+    return { ok: false, error: 'Producto agotado. Puedes solicitar aviso al administrador.' };
+  }
   const qty = Math.max(1, Math.min(99, Math.floor(quantity)));
   const current = db()
     .prepare('SELECT quantity FROM cart_items WHERE user_id = ? AND product_id = ?')
     .get(userId, productId) as Row | undefined;
-  const next = Math.min(product.stock, num(current?.quantity) + qty);
+  const limit = product.unlimitedStock ? 99 : product.stock;
+  const next = Math.min(limit, num(current?.quantity) + qty);
   if (current) {
     db().prepare('UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?').run(
       next,
@@ -485,10 +489,13 @@ export function setCartQuantity(userId: string, productId: string, quantity: num
   }
   const product = getProduct(productId);
   if (!product) return { ok: false, error: 'Producto no disponible.' };
-  if (quantity > product.stock) return { ok: false, error: `Solo hay ${product.stock} unidades disponibles.` };
+  if (!product.unlimitedStock && quantity > product.stock) {
+    return { ok: false, error: `Solo hay ${product.stock} unidades disponibles.` };
+  }
+  const limit = product.unlimitedStock ? 99 : product.stock;
   db()
     .prepare('UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?')
-    .run(Math.floor(quantity), userId, productId);
+    .run(Math.min(Math.floor(quantity), limit), userId, productId);
   return { ok: true };
 }
 
@@ -652,7 +659,7 @@ export function checkout(
         result = { ok: false, error: `El producto "${line.name}" ya no está disponible.` };
         return;
       }
-      if (fresh.stock < line.quantity) {
+      if (!fresh.unlimitedStock && fresh.stock < line.quantity) {
         result = { ok: false, error: `Stock insuficiente para "${line.name}". Disponible: ${fresh.stock}.` };
         return;
       }
@@ -713,8 +720,11 @@ export function checkout(
     );
 
     for (const line of lines) {
-      const stockResult = stockStmt.run(line.quantity, stamp, line.productId, line.quantity);
-      if (stockResult.changes !== 1) throw new Error(`No hay stock suficiente de "${line.name}".`);
+      // Los productos con stock ilimitado nunca descuentan unidades.
+      if (!line.unlimitedStock) {
+        const stockResult = stockStmt.run(line.quantity, stamp, line.productId, line.quantity);
+        if (stockResult.changes !== 1) throw new Error(`No hay stock suficiente de "${line.name}".`);
+      }
       itemStmt.run(id('oi_'), orderId, line.productId, line.name, line.priceCents, line.quantity);
     }
 
@@ -844,7 +854,7 @@ export function updateOrderStatus(
       for (const item of items) {
         if (item.product_id) {
           db()
-            .prepare('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ?')
+            .prepare('UPDATE products SET stock = stock + ?, updated_at = ? WHERE id = ? AND unlimited_stock = 0')
             .run(num(item.quantity), now(), str(item.product_id));
         }
       }
