@@ -11,8 +11,10 @@ import {
   createCategory,
   createProduct,
   createUser,
+  getCart,
   getProduct,
   listCategories,
+  setCartQuantity,
   updateProduct,
 } from '../lib/store';
 import type { Product } from '../lib/types';
@@ -97,9 +99,12 @@ check(saleAgain.ok, 'la segunda compra ilimitada también se completa');
 check(reload(unlimited.id).stock === 4, 'el stock numérico guardado permanece intacto (4)');
 
 console.log('3) Producto numérico: conserva sus límites y descuenta');
-const tooMany = addToCart(user.user.id, limited.id, 3);
-check(!tooMany.ok, 'no permite agregar 3 unidades cuando solo hay 2');
-check(addToCart(user.user.id, limited.id, 2).ok, 'permite agregar las 2 unidades disponibles');
+const clamped = addToCart(user.user.id, limited.id, 3);
+const clampedQty = getCart(user.user.id).find((line) => line.productId === limited.id)?.quantity;
+check(clamped.ok && clampedQty === 2, 'al pedir 3 con stock 2, el carrito se limita a 2');
+const tooMany = setCartQuantity(user.user.id, limited.id, 3);
+check(!tooMany.ok, 'no permite fijar 3 unidades cuando solo hay 2');
+check(setCartQuantity(user.user.id, limited.id, 2).ok, 'permite fijar las 2 unidades disponibles');
 const saleLimited = checkout(user.user.id, { paymentMethod: 'AGORA' });
 check(saleLimited.ok, 'la compra numérica se completa');
 check(reload(limited.id).stock === 0, 'el stock numérico baja a 0');
@@ -108,7 +113,8 @@ console.log('4) Cambio de ilimitado a numérico y de vuelta');
 const backToNumber = updateProduct(unlimited.id, inputFrom(reload(unlimited.id), { stock: 2, unlimitedStock: false }));
 check(backToNumber.ok, 'se puede volver a stock numérico');
 check(reload(unlimited.id).stock === 2, 'el stock numérico elegido se guarda (2)');
-check(!addToCart(user.user.id, unlimited.id, 5).ok, 'con stock 2 ya no permite 5 unidades');
+check(addToCart(user.user.id, unlimited.id, 1).ok, 'con stock 2 se puede agregar 1 unidad');
+check(!setCartQuantity(user.user.id, unlimited.id, 5).ok, 'con stock 2 ya no permite fijar 5 unidades');
 
 const toUnlimitedAgain = updateProduct(unlimited.id, inputFrom(reload(unlimited.id), { stock: 2, unlimitedStock: true }));
 check(toUnlimitedAgain.ok, 'se puede volver a ilimitado');
