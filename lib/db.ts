@@ -337,7 +337,14 @@ function seed(conn: DB) {
   const seeded = conn.prepare("SELECT value FROM settings WHERE key = 'seeded_catalog'").get() as
     | { value: string }
     | undefined;
-  if (seeded) return;
+  const existingProducts = Number(
+    (conn.prepare('SELECT COUNT(*) AS c FROM products').get() as { c: number }).c
+  );
+  // Nunca se agregan productos de demostración si la tienda ya tiene catálogo real.
+  if (seeded || existingProducts > 0) {
+    if (!seeded) setDefault('seeded_catalog', now());
+    return;
+  }
 
   const categories = [
     { name: 'Juegos', slug: 'juegos', icon: '🎮', position: 1 },

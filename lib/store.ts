@@ -391,12 +391,26 @@ export function updateProduct(
   return { ok: true };
 }
 
-export function deleteProduct(productId: string): { ok: boolean; error?: string } {
+/**
+ * Archiva un producto sin borrar su registro: deja de mostrarse en la tienda y
+ * se puede restaurar. Así los pedidos, imágenes y datos históricos se conservan.
+ */
+export function archiveProduct(productId: string): { ok: boolean; error?: string } {
+  const product = db().prepare('SELECT id FROM products WHERE id = ?').get(productId);
+  if (!product) return { ok: false, error: 'El producto no existe.' };
   const tx = db().transaction(() => {
+    db().prepare('UPDATE products SET active = 0, updated_at = ? WHERE id = ?').run(now(), productId);
     db().prepare('DELETE FROM cart_items WHERE product_id = ?').run(productId);
-    db().prepare('DELETE FROM products WHERE id = ?').run(productId);
   });
   tx();
+  return { ok: true };
+}
+
+/** Vuelve a publicar un producto archivado, conservando su historial. */
+export function restoreProduct(productId: string): { ok: boolean; error?: string } {
+  const product = db().prepare('SELECT id FROM products WHERE id = ?').get(productId);
+  if (!product) return { ok: false, error: 'El producto no existe.' };
+  db().prepare('UPDATE products SET active = 1, updated_at = ? WHERE id = ?').run(now(), productId);
   return { ok: true };
 }
 
