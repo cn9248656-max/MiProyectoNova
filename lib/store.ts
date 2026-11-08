@@ -347,8 +347,8 @@ export function createProduct(input: ProductInput): { ok: true; id: string } | {
   const stamp = now();
   db()
     .prepare(
-      `INSERT INTO products (id, name, description, price_cents, category_id, image_id, stock, active, featured, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+      `INSERT INTO products (id, name, description, price_cents, category_id, image_id, stock, unlimited_stock, active, featured, created_at, updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
     )
     .run(
       productId,
@@ -377,7 +377,7 @@ export function updateProduct(
   db()
     .prepare(
       `UPDATE products SET name = ?, description = ?, price_cents = ?, category_id = ?, image_id = ?,
-        stock = ?, active = ?, featured = ?, updated_at = ? WHERE id = ?`
+        stock = ?, unlimited_stock = ?, active = ?, featured = ?, updated_at = ? WHERE id = ?`
     )
     .run(
       input.name.trim(),
@@ -386,6 +386,7 @@ export function updateProduct(
       input.categoryId,
       input.imageId || null,
       input.stock,
+      input.unlimitedStock ? 1 : 0,
       input.active ? 1 : 0,
       input.featured ? 1 : 0,
       now(),
@@ -424,7 +425,7 @@ export function restoreProduct(productId: string): { ok: boolean; error?: string
 export function getCart(userId: string): CartLine[] {
   const rows = db()
     .prepare(
-      `SELECT ci.id, ci.product_id, ci.quantity, p.name, p.price_cents, p.stock, p.image_id, c.name AS category_name
+      `SELECT ci.id, ci.product_id, ci.quantity, p.name, p.price_cents, p.stock, p.unlimited_stock, p.image_id, c.name AS category_name
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
        JOIN categories c ON c.id = p.category_id
@@ -439,6 +440,7 @@ export function getCart(userId: string): CartLine[] {
     name: str(row.name),
     priceCents: num(row.price_cents),
     stock: num(row.stock),
+    unlimitedStock: num(row.unlimited_stock) === 1,
     imageId: (row.image_id as string | null) ?? null,
     categoryName: str(row.category_name),
   }));
