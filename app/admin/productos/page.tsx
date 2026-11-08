@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import ProductForm from '../../../components/ProductForm';
-import { deleteProductAction } from '../../../app/actions';
+import { archiveProductAction, restoreProductAction } from '../../../app/actions';
 import { formatMoney } from '../../../lib/money';
 import { getProduct, getSettings, listCategories, listProducts } from '../../../lib/store';
 
@@ -99,12 +99,21 @@ export default async function AdminProductsPage({
                         <Link className="btn btn--ghost btn--sm" href={`/admin/productos?edit=${product.id}`}>
                           Editar
                         </Link>
-                        <form action={deleteProductAction}>
-                          <input type="hidden" name="productId" value={product.id} />
-                          <button className="btn btn--danger btn--sm" type="submit">
-                            Eliminar
-                          </button>
-                        </form>
+                        {product.active ? (
+                          <form action={archiveProductAction}>
+                            <input type="hidden" name="productId" value={product.id} />
+                            <button className="btn btn--ghost btn--sm" type="submit" title="Deja de mostrarse; no borra pedidos ni imágenes">
+                              Archivar
+                            </button>
+                          </form>
+                        ) : (
+                          <form action={restoreProductAction}>
+                            <input type="hidden" name="productId" value={product.id} />
+                            <button className="btn btn--ghost btn--sm" type="submit">
+                              Publicar
+                            </button>
+                          </form>
+                        )}
                       </div>
                     </td>
                   </tr>
