@@ -58,7 +58,7 @@ function maybeAutoBackup(conn: DB) {
     const last = listBackups()[0];
     if (last && Date.now() - new Date(last.createdAt).getTime() < AUTO_BACKUP_INTERVAL_MS) return;
     const info = createSnapshot('automatica');
-    console.log(`[nova] Copia automática creada: ${info.name} (${info.counts.products} productos).`);
+    console.log(`[nova] Copia automática creada: ${info.name} (${info.counts?.products ?? 0} productos).`);
   } catch (error) {
     console.error('[nova] La copia automática no se pudo crear:', error);
   }

@@ -29,6 +29,7 @@ export default async function AdminBackupPage({
   const counts = currentCounts();
   const backups = listBackups();
   const latest = backups[0];
+  const catalog = catalogSnapshotInfo(db());
 
   return (
     <div className="stack" style={{ gap: 22 }}>
