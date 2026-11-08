@@ -173,6 +173,7 @@ export function migrate(conn: DB) {
       category_id TEXT NOT NULL REFERENCES categories(id),
       image_id TEXT,
       stock INTEGER NOT NULL DEFAULT 0,
+      unlimited_stock INTEGER NOT NULL DEFAULT 0,
       active INTEGER NOT NULL DEFAULT 1,
       featured INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -289,6 +290,8 @@ export function migrate(conn: DB) {
   ensureColumn(conn, 'products', 'category_id', 'TEXT');
   ensureColumn(conn, 'products', 'price', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(conn, 'products', 'stock', 'INTEGER NOT NULL DEFAULT 0');
+  // Stock ilimitado (∞): no descuenta unidades ni marca agotado. Se agrega sin tocar datos existentes.
+  ensureColumn(conn, 'products', 'unlimited_stock', 'INTEGER NOT NULL DEFAULT 0');
   ensureColumn(conn, 'products', 'image_upload_id', 'TEXT');
   ensureColumn(conn, 'products', 'active', 'INTEGER NOT NULL DEFAULT 1');
   ensureColumn(conn, 'products', 'featured', 'INTEGER NOT NULL DEFAULT 0');

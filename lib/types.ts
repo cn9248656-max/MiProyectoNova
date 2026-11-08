@@ -36,6 +36,8 @@ export interface Product {
   categorySlug: string;
   imageId: string | null;
   stock: number;
+  /** Si es true, el producto se vende sin límite y no se descuenta stock. */
+  unlimitedStock: boolean;
   active: boolean;
   featured: boolean;
   createdAt: string;
@@ -49,6 +51,7 @@ export interface CartLine {
   name: string;
   priceCents: number;
   stock: number;
+  unlimitedStock: boolean;
   imageId: string | null;
   categoryName: string;
 }

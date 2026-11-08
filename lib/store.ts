@@ -53,6 +53,7 @@ function mapProduct(row: Row): Product {
     categorySlug: str(row.category_slug),
     imageId: (row.image_id as string | null) ?? null,
     stock: num(row.stock),
+    unlimitedStock: num(row.unlimited_stock) === 1,
     active: num(row.active) === 1,
     featured: num(row.featured) === 1,
     createdAt: str(row.created_at),
@@ -328,6 +329,8 @@ export interface ProductInput {
   priceCents: number;
   categoryId: string;
   stock: number;
+  /** Opcional para no romper llamadas antiguas: por defecto el stock es numérico. */
+  unlimitedStock?: boolean;
   imageId?: string | null;
   active: boolean;
   featured: boolean;
