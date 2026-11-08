@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { clearSessionCookie, getAdminUser, getCurrentUser, setSessionCookie } from '../lib/auth';
 import { parseAmountToCents } from '../lib/money';
 import * as chat from '../lib/chat';
+import * as backups from '../lib/backup-db';
 import * as store from '../lib/store';
 import type { ActionState, OrderStatus, PaymentMethod } from '../lib/types';
 
@@ -243,12 +244,54 @@ export async function productSaveAction(_prev: ActionState, formData: FormData):
   return { success: productId ? 'Producto actualizado y guardado.' : 'Producto creado y guardado.' };
 }
 
-export async function deleteProductAction(formData: FormData): Promise<void> {
+export async function archiveProductAction(formData: FormData): Promise<void> {
   await requireAdmin();
-  const result = store.deleteProduct(str(formData, 'productId'));
+  const result = store.archiveProduct(str(formData, 'productId'));
   revalidatePath('/', 'layout');
-  if (!result.ok) fail('/admin/productos', result.error || 'No se pudo eliminar el producto.');
-  back('/admin/productos', 'Producto eliminado.');
+  if (!result.ok) fail('/admin/productos', result.error || 'No se pudo archivar el producto.');
+  back('/admin/productos', 'Producto archivado. Sus pedidos e imágenes se conservan y puedes restaurarlo.');
+}
+
+export async function restoreProductAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const result = store.restoreProduct(str(formData, 'productId'));
+  revalidatePath('/', 'layout');
+  if (!result.ok) fail('/admin/productos', result.error || 'No se pudo restaurar el producto.');
+  back('/admin/productos', 'Producto publicado de nuevo.');
+}
+
+/* ------------------------------------------------------------------ */
+/* Copias de seguridad                                                */
+/* ------------------------------------------------------------------ */
+
+export async function createBackupAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const reason = str(formData, 'reason').trim().slice(0, 60);
+  try {
+    const info = backups.createBackup(reason || 'manual');
+    back('/admin/respaldo', `Copia creada y verificada: ${info.name}`);
+  } catch (error) {
+    fail('/admin/respaldo', error instanceof Error ? error.message : 'No se pudo crear la copia.');
+  }
+}
+
+export async function restoreBackupAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  if (str(formData, 'confirm').trim().toUpperCase() !== 'RESTAURAR') {
+    fail('/admin/respaldo', 'Escribe RESTAURAR para confirmar la restauración.');
+  }
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0) {
+    fail('/admin/respaldo', 'Selecciona un archivo .db de copia de seguridad.');
+  }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const result = backups.restoreFromBuffer(buffer);
+  if (!result.ok) fail('/admin/respaldo', result.error || 'No se pudo restaurar la copia.');
+  revalidatePath('/', 'layout');
+  back(
+    '/admin/respaldo',
+    `Datos restaurados. Copia previa guardada como ${result.safetyBackup}. Productos: ${result.counts?.products ?? 0}.`
+  );
 }
 
 export async function saveCategoryAction(formData: FormData): Promise<void> {

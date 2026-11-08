@@ -13,6 +13,7 @@ const LINKS = [
   { href: '/admin/usuarios', label: 'Usuarios', icon: '👤' },
   { href: '/admin/solicitudes', label: 'Solicitudes', icon: '✉' },
   { href: '/admin/notificaciones', label: 'Notificaciones', icon: '🔔' },
+  { href: '/admin/respaldo', label: 'Respaldos', icon: '🛡' },
   { href: '/admin/configuracion', label: 'Configuración', icon: '⚙' },
 ];
 
