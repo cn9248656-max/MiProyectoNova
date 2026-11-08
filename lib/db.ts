@@ -251,20 +251,42 @@ function migrate(conn: DB) {
       created_at TEXT NOT NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
-    CREATE INDEX IF NOT EXISTS idx_products_active ON products(active);
-    CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
-    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-    CREATE INDEX IF NOT EXISTS idx_topups_user ON topups(user_id);
-    CREATE INDEX IF NOT EXISTS idx_topups_status ON topups(status);
-    CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_transactions(user_id);
-    CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
-    CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
-    CREATE INDEX IF NOT EXISTS idx_conversations_last ON conversations(last_message_at);
   `);
 
+  // Columnas que pudieron faltar en bases antiguas: se agregan antes de crear índices.
+  ensureColumn(conn, 'products', 'description', 'TEXT');
+  ensureColumn(conn, 'products', 'category_id', 'TEXT');
+  ensureColumn(conn, 'products', 'price', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(conn, 'products', 'stock', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(conn, 'products', 'image_upload_id', 'TEXT');
+  ensureColumn(conn, 'products', 'active', 'INTEGER NOT NULL DEFAULT 1');
+  ensureColumn(conn, 'products', 'featured', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(conn, 'products', 'created_at', 'TEXT');
+  ensureColumn(conn, 'products', 'updated_at', 'TEXT');
   // Datos de entrega del cliente (ID de Free Fire y otros datos) por pedido.
   ensureColumn(conn, 'orders', 'customer_data', 'TEXT');
+
+  // Los índices son optimizaciones: si una tabla antigua no tiene la columna,
+  // el índice se omite y la actualización continúa sin perder registros.
+  const indexes = [
+    'CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id)',
+    'CREATE INDEX IF NOT EXISTS idx_products_active ON products(active)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)',
+    'CREATE INDEX IF NOT EXISTS idx_topups_user ON topups(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_topups_status ON topups(status)',
+    'CREATE INDEX IF NOT EXISTS idx_wallet_user ON wallet_transactions(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read)',
+    'CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at)',
+    'CREATE INDEX IF NOT EXISTS idx_conversations_last ON conversations(last_message_at)',
+  ];
+  for (const statement of indexes) {
+    try {
+      conn.exec(statement);
+    } catch (error) {
+      console.warn('[nova] Índice omitido durante la migración:', statement, error);
+    }
+  }
 }
 
 /** Migración no destructiva: agrega la columna sólo si la base ya existente no la tiene. */
