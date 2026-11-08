@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 3000",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "backup": "tsx scripts/backup.ts",
+    "verify:backup": "tsx scripts/verify-backup.ts"
   },
   "dependencies": {
     "bcryptjs": "3.0.3",
