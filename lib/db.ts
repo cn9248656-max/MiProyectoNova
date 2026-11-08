@@ -134,7 +134,7 @@ function protectBeforeMigration(conn: DB) {
   }
 }
 
-function migrate(conn: DB) {
+export function migrate(conn: DB) {
   conn.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
