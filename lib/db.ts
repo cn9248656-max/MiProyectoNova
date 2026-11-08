@@ -1,12 +1,12 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import crypto from 'node:crypto';
 import Database from 'better-sqlite3';
+import { DATA_DIR, DB_FILE } from './paths';
+import { createSnapshot } from './backup';
 
 export type DB = Database.Database;
 
-export const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
-export const DB_FILE = path.join(DATA_DIR, 'novastore.db');
+export { DATA_DIR, DB_FILE };
 
 declare global {
   // eslint-disable-next-line no-var
