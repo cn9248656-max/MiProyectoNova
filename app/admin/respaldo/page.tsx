@@ -149,6 +149,29 @@ export default async function AdminBackupPage({
       </section>
 
       <section className="card">
+        <h2 className="card__title">Recuperar productos guardados</h2>
+        <p className="hint">
+          El catálogo real también está guardado fuera de la base de datos, versionado con el código:{' '}
+          <strong>{catalog.snapshotProducts} productos</strong> y <strong>{catalog.snapshotCategories} categorías</strong>{' '}
+          con sus nombres, precios, descripciones, imágenes y categorías. Al abrir la tienda se reponen automáticamente
+          los que falten; nunca se borra ni se reemplaza nada.
+        </p>
+        <p className="hint">
+          Productos guardados que faltan ahora mismo:{' '}
+          <strong>{catalog.missing.length}</strong>
+          {catalog.missing.length > 0 ? ` (${catalog.missing.join(', ')})` : ' — el catálogo está completo.'}
+        </p>
+        {catalog.lastRestore ? (
+          <p className="tiny muted">Última recuperación automática: {new Date(catalog.lastRestore).toLocaleString('es')}</p>
+        ) : null}
+        <form action={restoreCatalogAction}>
+          <button className="btn btn--primary" type="submit">
+            Comprobar y recuperar productos que falten
+          </button>
+        </form>
+      </section>
+
+      <section className="card">
         <h2 className="card__title">Restaurar una copia</h2>
         <p className="hint">
           Antes de restaurar se guarda automáticamente una copia del estado actual, así que también puedes volver
