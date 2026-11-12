@@ -34,7 +34,7 @@ export interface SyncReport {
 }
 
 interface PendingRow {
-  table: string;
+  tbl: string;
   markedAt: string;
 }
 
