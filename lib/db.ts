@@ -5,6 +5,7 @@ import { DATA_DIR, DB_FILE } from './paths';
 import { createSnapshot, listBackups } from './backup';
 import { restoreCatalogOnBoot } from './catalog-recovery';
 import { ensureSyncSchema, pullAllSync, pushPendingSync, startSyncLoop } from './supabase-sync';
+import { ensureProviderSchema } from './provider-schema';
 
 export type DB = Database.Database;
 
@@ -32,6 +33,7 @@ export function db(): DB {
   conn.pragma('busy_timeout = 8000');
   if (existed) protectBeforeMigration(conn);
   migrate(conn);
+  ensureProviderSchema(conn);
   // Persistencia permanente: primero se preparan los triggers de sincronización
   // y después se restauran los datos desde Supabase ANTES de sembrar nada, de
   // modo que un contenedor nuevo recupera usuarios, pedidos, conversaciones y

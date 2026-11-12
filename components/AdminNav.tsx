@@ -8,6 +8,7 @@ const LINKS = [
   { href: '/admin/productos', label: 'Productos', icon: '▣' },
   { href: '/admin/categorias', label: 'Categorías', icon: '❖' },
   { href: '/admin/pedidos', label: 'Pedidos', icon: '🧾' },
+  { href: '/admin/peakerr', label: 'PEAKERR API', icon: '🔌' },
   { href: '/admin/mensajes', label: 'Mensajes', icon: '💬' },
   { href: '/admin/soporte', label: 'Soporte', icon: '🎧' },
   { href: '/admin/recargas', label: 'Recargas', icon: '💳' },

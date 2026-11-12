@@ -423,10 +423,35 @@ export function restoreProduct(productId: string): { ok: boolean; error?: string
 /* Carrito                                                            */
 /* ------------------------------------------------------------------ */
 
+/** Precio unitario efectivo: aplica la oferta vigente si existe. */
+export function effectiveUnitCents(priceCents: number, offerCents = 0, offerEndsAt: string | null = null): number {
+  if (offerCents > 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    const end = offerEndsAt ? offerEndsAt.slice(0, 10) : '';
+    if (!end || end >= today) return offerCents;
+  }
+  return priceCents;
+}
+
+/** Total de una línea: por unidad o por cada 1000 unidades (formato SMM). */
+export function lineTotalCents(line: {
+  priceCents: number;
+  quantity: number;
+  priceMode?: string;
+  offerCents?: number;
+  offerEndsAt?: string | null;
+}): number {
+  const unit = effectiveUnitCents(line.priceCents, line.offerCents ?? 0, line.offerEndsAt ?? null);
+  if (line.priceMode === 'PER_K') return Math.round((unit * line.quantity) / 1000);
+  return unit * line.quantity;
+}
+
 export function getCart(userId: string): CartLine[] {
   const rows = db()
     .prepare(
-      `SELECT ci.id, ci.product_id, ci.quantity, p.name, p.price_cents, p.stock, p.unlimited_stock, p.image_id, c.name AS category_name
+      `SELECT ci.id, ci.product_id, ci.quantity, p.name, p.price_cents, p.stock, p.unlimited_stock, p.image_id,
+              p.provider_price_mode, p.offer_price_cents, p.offer_ends_at, p.provider_service_id,
+              c.name AS category_name
        FROM cart_items ci
        JOIN products p ON p.id = ci.product_id
        JOIN categories c ON c.id = p.category_id
@@ -434,24 +459,32 @@ export function getCart(userId: string): CartLine[] {
        ORDER BY ci.created_at ASC`
     )
     .all(userId) as Row[];
-  return rows.map((row) => ({
-    id: str(row.id),
-    productId: str(row.product_id),
-    quantity: num(row.quantity),
-    name: str(row.name),
-    priceCents: num(row.price_cents),
-    stock: num(row.stock),
-    unlimitedStock: num(row.unlimited_stock) === 1,
-    imageId: (row.image_id as string | null) ?? null,
-    categoryName: str(row.category_name),
-  }));
+  return rows.map((row) => {
+    const priceMode = str(row.provider_price_mode, 'UNIT') === 'PER_K' ? 'PER_K' : 'UNIT';
+    const base = {
+      id: str(row.id),
+      productId: str(row.product_id),
+      quantity: num(row.quantity),
+      name: str(row.name),
+      priceCents: num(row.price_cents),
+      stock: num(row.stock),
+      unlimitedStock: num(row.unlimited_stock) === 1,
+      imageId: (row.image_id as string | null) ?? null,
+      categoryName: str(row.category_name),
+      priceMode: priceMode as 'UNIT' | 'PER_K',
+      offerCents: num(row.offer_price_cents),
+      offerEndsAt: (row.offer_ends_at as string | null) ?? null,
+      providerServiceId: (row.provider_service_id as string | null) ?? null,
+    };
+    return { ...base, lineTotalCents: lineTotalCents(base) };
+  });
 }
 
 export function cartSummary(userId: string): { lines: CartLine[]; totalCents: number; itemCount: number } {
   const lines = getCart(userId);
   return {
     lines,
-    totalCents: lines.reduce((sum, line) => sum + line.priceCents * line.quantity, 0),
+    totalCents: lines.reduce((sum, line) => sum + lineTotalCents(line), 0),
     itemCount: lines.reduce((sum, line) => sum + line.quantity, 0),
   };
 }
@@ -594,11 +627,12 @@ function parseCustomerData(value: unknown): OrderCustomerData | null {
   }
 }
 
-function serializeCustomerData(data?: { playerId?: string; details?: string }): string | null {
+function serializeCustomerData(data?: { playerId?: string; details?: string; link?: string }): string | null {
   const playerId = data?.playerId?.trim().slice(0, 120) || '';
   const details = data?.details?.trim().slice(0, 600) || '';
-  if (!playerId && !details) return null;
-  return JSON.stringify({ playerId, details, updatedAt: now() } satisfies OrderCustomerData);
+  const link = data?.link?.trim().slice(0, 300) || '';
+  if (!playerId && !details && !link) return null;
+  return JSON.stringify({ playerId, details, link: link || undefined, updatedAt: now() } satisfies OrderCustomerData);
 }
 
 function mapOrder(row: Row): Order {
@@ -628,7 +662,7 @@ export function checkout(
     paymentMethod: PaymentMethod;
     note?: string;
     reference?: string;
-    customerData?: { playerId?: string; details?: string };
+    customerData?: { playerId?: string; details?: string; link?: string };
   }
 ): { ok: true; orderId: string; code: string } | { ok: false; error: string } {
   const settings = getSettings();
@@ -665,7 +699,14 @@ export function checkout(
       }
     }
 
-    const subtotal = lines.reduce((sum, line) => sum + line.priceCents * line.quantity, 0);
+    const needsLink = lines.some((line) => Boolean(line.providerServiceId));
+    const customerLink = input.customerData?.link?.trim() || '';
+    if (needsLink && !customerLink) {
+      result = { ok: false, error: 'Escribe el enlace o usuario donde se entregará el servicio.' };
+      return;
+    }
+
+    const subtotal = lines.reduce((sum, line) => sum + lineTotalCents(line), 0);
     if (subtotal <= 0) {
       result = { ok: false, error: 'El total del pedido no es válido.' };
       return;
@@ -725,7 +766,14 @@ export function checkout(
         const stockResult = stockStmt.run(line.quantity, stamp, line.productId, line.quantity);
         if (stockResult.changes !== 1) throw new Error(`No hay stock suficiente de "${line.name}".`);
       }
-      itemStmt.run(id('oi_'), orderId, line.productId, line.name, line.priceCents, line.quantity);
+      itemStmt.run(
+        id('oi_'),
+        orderId,
+        line.productId,
+        line.name,
+        effectiveUnitCents(line.priceCents, line.offerCents ?? 0, line.offerEndsAt ?? null),
+        line.quantity
+      );
     }
 
     if (input.paymentMethod === 'BALANCE') {

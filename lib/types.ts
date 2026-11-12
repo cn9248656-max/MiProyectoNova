@@ -54,6 +54,13 @@ export interface CartLine {
   unlimitedStock: boolean;
   imageId: string | null;
   categoryName: string;
+  /** 'UNIT' = precio por unidad · 'PER_K' = precio por cada 1000 unidades */
+  priceMode?: 'UNIT' | 'PER_K';
+  offerCents?: number;
+  offerEndsAt?: string | null;
+  providerServiceId?: string | null;
+  /** Total de la línea ya calculado (por unidad o por 1000). */
+  lineTotalCents?: number;
 }
 
 export interface OrderItem {
@@ -115,6 +122,8 @@ export interface WalletTx {
 export interface OrderCustomerData {
   playerId: string;
   details: string;
+  /** Enlace o usuario de destino para servicios de proveedor (SMM). */
+  link?: string;
   updatedAt: string;
 }
 
