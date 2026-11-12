@@ -126,7 +126,7 @@ function ticketCode(): string {
   for (let index = 0; index < 6; index += 1) {
     code += alphabet[Math.floor(Math.random() * alphabet.length)];
   }
-  return `SP-${code}`;
+  return `SUP-${code}`;
 }
 
 function uniqueCode(): string {
