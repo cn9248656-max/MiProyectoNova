@@ -6,8 +6,8 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
   try {
-    const { startProviderWorker } = await import('./lib/provider-worker');
-    startProviderWorker();
+    const { startProviderLoop } = await import('./lib/provider-worker');
+    startProviderLoop();
   } catch (error) {
     console.error('[peakerr] no se pudo iniciar el trabajador', error);
   }
