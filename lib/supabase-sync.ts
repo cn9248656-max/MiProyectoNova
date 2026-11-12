@@ -218,14 +218,14 @@ function applyRows(conn: Conn, table: string, rows: Array<Record<string, unknown
 
 function collectPending(conn: Conn): Pending {
   const dirty = conn
-    .prepare('select table_name as table, marked_at as markedAt from sync_dirty')
+    .prepare('select table_name as tbl, marked_at as markedAt from sync_dirty')
     .all() as PendingRow[];
   const deletes = conn
-    .prepare('select table_name as table, row_key as key, marked_at as markedAt from sync_deleted')
+    .prepare('select table_name as tbl, row_key as key, marked_at as markedAt from sync_deleted')
     .all() as PendingDelete[];
   return {
-    dirty: dirty.filter((row) => Boolean(SYNC_TABLES[row.table])),
-    deletes: deletes.filter((row) => Boolean(SYNC_TABLES[row.table])),
+    dirty: dirty.filter((row) => Boolean(SYNC_TABLES[row.tbl])),
+    deletes: deletes.filter((row) => Boolean(SYNC_TABLES[row.tbl])),
   };
 }
 
@@ -233,8 +233,8 @@ function clearPending(conn: Conn, pending: Pending): void {
   const dirtyStmt = conn.prepare('delete from sync_dirty where table_name = ? and marked_at <= ?');
   const deleteStmt = conn.prepare('delete from sync_deleted where table_name = ? and row_key = ? and marked_at <= ?');
   const run = conn.transaction(() => {
-    for (const row of pending.dirty) dirtyStmt.run(row.table, row.markedAt);
-    for (const row of pending.deletes) deleteStmt.run(row.table, row.key, row.markedAt);
+    for (const row of pending.dirty) dirtyStmt.run(row.tbl, row.markedAt);
+    for (const row of pending.deletes) deleteStmt.run(row.tbl, row.key, row.markedAt);
   });
   run();
 }
@@ -250,9 +250,9 @@ function buildPushOps(conn: Conn, pending: Pending): { ops: RemoteOp[]; tables: 
 
   const deletesByTable = new Map<string, string[]>();
   for (const row of pending.deletes) {
-    const list = deletesByTable.get(row.table) ?? [];
+    const list = deletesByTable.get(row.tbl) ?? [];
     list.push(row.key);
-    deletesByTable.set(row.table, list);
+    deletesByTable.set(row.tbl, list);
   }
   for (const [table, keys] of deletesByTable) {
     for (let index = 0; index < keys.length; index += DEFAULT_CHUNK) {
@@ -261,7 +261,7 @@ function buildPushOps(conn: Conn, pending: Pending): { ops: RemoteOp[]; tables: 
     tables.add(table);
   }
 
-  const dirtyTables = new Set(pending.dirty.map((row) => row.table));
+  const dirtyTables = new Set(pending.dirty.map((row) => row.tbl));
   for (const table of SYNC_ORDER) {
     if (!dirtyTables.has(table)) continue;
     const rows = readRows(conn, table);
