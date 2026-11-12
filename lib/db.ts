@@ -283,6 +283,31 @@ export function migrate(conn: DB) {
       created_at TEXT NOT NULL
     );
 
+    -- Soporte al cliente: solicitudes privadas con su propio hilo de mensajes.
+    -- Tablas nuevas: no alteran ni reemplazan ningún registro existente.
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      subject TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'QUESTION',
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      last_message_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS support_messages (
+      id TEXT PRIMARY KEY,
+      ticket_id TEXT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+      sender_role TEXT NOT NULL,
+      sender_id TEXT NOT NULL,
+      body TEXT NOT NULL,
+      read_by_user INTEGER NOT NULL DEFAULT 0,
+      read_by_admin INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    );
+
   `);
 
   // Columnas que pudieron faltar en bases antiguas: se agregan antes de crear índices.
@@ -299,6 +324,10 @@ export function migrate(conn: DB) {
   ensureColumn(conn, 'products', 'updated_at', 'TEXT');
   // Datos de entrega del cliente (ID de Free Fire y otros datos) por pedido.
   ensureColumn(conn, 'orders', 'customer_data', 'TEXT');
+  // Soporte: columnas por si la base ya existía de una versión anterior.
+  ensureColumn(conn, 'support_tickets', 'category', "TEXT NOT NULL DEFAULT 'QUESTION'");
+  ensureColumn(conn, 'support_tickets', 'status', "TEXT NOT NULL DEFAULT 'PENDING'");
+  ensureColumn(conn, 'support_tickets', 'last_message_at', 'TEXT');
 
   // Los índices son optimizaciones: si una tabla antigua no tiene la columna,
   // el índice se omite y la actualización continúa sin perder registros.
@@ -313,6 +342,9 @@ export function migrate(conn: DB) {
     'CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read)',
     'CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at)',
     'CREATE INDEX IF NOT EXISTS idx_conversations_last ON conversations(last_message_at)',
+    'CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id)',
+    'CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status)',
+    'CREATE INDEX IF NOT EXISTS idx_support_messages_ticket ON support_messages(ticket_id, created_at)',
   ];
   for (const statement of indexes) {
     try {

@@ -213,3 +213,73 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   BALANCE: 'Saldo NovaStore',
   AGORA: 'Agora (pago aparte)',
 };
+
+/* ------------------------------------------------------------------ */
+/* Soporte al cliente                                                 */
+/* ------------------------------------------------------------------ */
+
+export type SupportStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED';
+export type SupportCategory = 'QUESTION' | 'ORDER' | 'PAYMENT' | 'BUG' | 'CLAIM' | 'OTHER';
+
+/** Una solicitud de soporte es un ticket privado con su propio hilo de chat. */
+export interface SupportTicket {
+  id: string;
+  code: string;
+  userId: string;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string | null;
+  lastMessage: string | null;
+  messageCount: number;
+  unreadForUser: number;
+  unreadForAdmin: number;
+  userName?: string;
+  userEmail?: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  ticketId: string;
+  senderRole: ChatSenderRole;
+  senderName: string;
+  body: string;
+  readByUser: boolean;
+  readByAdmin: boolean;
+  createdAt: string;
+}
+
+export const SUPPORT_STATUS_LABEL: Record<SupportStatus, string> = {
+  PENDING: 'Pendiente',
+  IN_PROGRESS: 'En proceso',
+  RESOLVED: 'Resuelto',
+};
+
+/** Clases de color ya existentes en la tienda, reutilizadas para los estados. */
+export const SUPPORT_STATUS_CLASS: Record<SupportStatus, string> = {
+  PENDING: 'status status--pending',
+  IN_PROGRESS: 'status status--sent',
+  RESOLVED: 'status status--completed',
+};
+
+export const SUPPORT_STATUS_ORDER: SupportStatus[] = ['PENDING', 'IN_PROGRESS', 'RESOLVED'];
+
+export const SUPPORT_CATEGORY_LABEL: Record<SupportCategory, string> = {
+  QUESTION: 'Consulta',
+  ORDER: 'Pedido',
+  PAYMENT: 'Pago o saldo',
+  BUG: 'Problema técnico',
+  CLAIM: 'Reclamo',
+  OTHER: 'Otro',
+};
+
+export const SUPPORT_CATEGORY_OPTIONS: SupportCategory[] = [
+  'QUESTION',
+  'ORDER',
+  'PAYMENT',
+  'BUG',
+  'CLAIM',
+  'OTHER',
+];
