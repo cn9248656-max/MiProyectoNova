@@ -9,6 +9,7 @@
  * Uso: DATA_DIR=/tmp/nova-support-check tsx scripts/verify-support.ts
  */
 import { createUser, listNotifications, listUsers } from '../lib/store';
+import type { PublicUser } from '../lib/types';
 import * as support from '../lib/support';
 
 let checks = 0;
@@ -32,7 +33,7 @@ async function main() {
   // La base temporal puede conservar datos de una ejecución anterior: se reutiliza
   // el administrador existente y se crean clientes con correos únicos.
   const stamp = Date.now().toString(36);
-  let adminUser = listUsers().find((user) => user.role === 'ADMIN') ?? null;
+  let adminUser: PublicUser | null = listUsers().find((user) => user.role === 'ADMIN') ?? null;
   if (!adminUser) {
     const created = createUser({ email: `admin-${stamp}@nova.test`, name: 'Admin Soporte', password: 'secreto123' });
     if (!created.ok) fail(created.error);
