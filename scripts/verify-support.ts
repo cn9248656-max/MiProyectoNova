@@ -174,12 +174,13 @@ async function main() {
   /* ------------------------- Persistencia del historial -------------------- */
 
   const stored = support.listMessages(ticketA.ticket.id);
-  check(stored.length === 3, 'El historial de Ana conserva los tres mensajes');
+  check(stored.length === 4, 'El historial de Ana conserva los cuatro mensajes');
   check(
     stored.some((message) => message.body.includes('usuario demo / clave demo')),
     'La respuesta del administrador sigue guardada'
   );
-  check(stored[0].body.includes('NV-1042'), 'El primer mensaje conserva su contenido');
+  check(stored[0].body.includes('Free Fire'), 'El mensaje inicial de la solicitud sigue guardado');
+  check(stored[1].body.includes('NV-1042'), 'El segundo mensaje conserva su contenido');
   check(stored.every((message) => message.ticketId === ticketA.ticket.id), 'Los mensajes pertenecen a su solicitud');
 
   const summary = support.supportSummary();
