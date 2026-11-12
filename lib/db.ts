@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import { DATA_DIR, DB_FILE } from './paths';
 import { createSnapshot, listBackups } from './backup';
 import { restoreCatalogOnBoot } from './catalog-recovery';
+import { ensureSyncSchema, pullAllSync, pushPendingSync, startSyncLoop } from './supabase-sync';
 
 export type DB = Database.Database;
 
@@ -12,6 +13,8 @@ export { DATA_DIR, DB_FILE };
 declare global {
   // eslint-disable-next-line no-var
   var __novaDb: DB | undefined;
+  // eslint-disable-next-line no-var
+  var __novaShutdownHooked: boolean | undefined;
 }
 
 /**
@@ -29,6 +32,12 @@ export function db(): DB {
   conn.pragma('busy_timeout = 8000');
   if (existed) protectBeforeMigration(conn);
   migrate(conn);
+  // Persistencia permanente: primero se preparan los triggers de sincronización
+  // y después se restauran los datos desde Supabase ANTES de sembrar nada, de
+  // modo que un contenedor nuevo recupera usuarios, pedidos, conversaciones y
+  // configuraciones en lugar de arrancar vacío.
+  ensureSyncSchema(conn);
+  restoreFromSupabase(conn);
   seed(conn);
   global.__novaDb = conn;
   // Repone los productos del catálogo guardado que falten. Solo agrega: nunca
@@ -39,7 +48,50 @@ export function db(): DB {
     console.error('[nova] La recuperación del catálogo no se pudo completar:', error);
   }
   maybeAutoBackup(conn);
+  // Envía a Supabase los cambios pendientes cada pocos segundos.
+  startSyncLoop(conn);
+  installShutdownFlush(conn);
   return conn;
+}
+
+/**
+ * Restaura el contenido completo desde Supabase. Solo lee e inserta/actualiza:
+ * nunca borra datos locales ni sobrescribe con registros vacíos.
+ */
+function restoreFromSupabase(conn: DB) {
+  if (process.env.NOVA_SUPABASE_SYNC === '0') return;
+  if (process.env.NEXT_PHASE === 'phase-production-build') return;
+  try {
+    const report = pullAllSync(conn);
+    const total = Object.values(report.tables).reduce((sum, value) => sum + value, 0);
+    if (report.ok) {
+      console.log(`[nova] Restaurados ${total} registros desde Supabase (${Object.keys(report.tables).length} tablas).`);
+    } else {
+      console.error('[nova] Restauración desde Supabase incompleta:', report.errors.slice(0, 3).join(' · '));
+    }
+  } catch (error) {
+    console.error('[nova] No se pudo restaurar desde Supabase:', error);
+  }
+}
+
+/** Último envío a Supabase al apagar el contenedor. */
+function installShutdownFlush(conn: DB) {
+  if (global.__novaShutdownHooked) return;
+  global.__novaShutdownHooked = true;
+  const flush = () => {
+    try {
+      const report = pushPendingSync(conn);
+      if (Object.keys(report.tables).length > 0) {
+        console.log(`[nova] Guardado final en Supabase: ${Object.keys(report.tables).join(', ')}.`);
+      }
+    } catch (error) {
+      console.error('[nova] El guardado final en Supabase falló:', error);
+    }
+    // Si otro manejador no cierra el proceso, se fuerza la salida sin dejarlo colgado.
+    setTimeout(() => process.exit(0), 3000).unref?.();
+  };
+  process.once('SIGTERM', flush);
+  process.once('SIGINT', flush);
 }
 
 /** Copia automática de la tienda como máximo cada 6 horas. */
