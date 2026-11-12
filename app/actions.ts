@@ -142,6 +142,7 @@ export async function checkoutAction(_prev: ActionState, formData: FormData): Pr
     customerData: {
       playerId: str(formData, 'playerId'),
       details: str(formData, 'customerDetails'),
+      link: str(formData, 'link'),
     },
   });
 

@@ -99,6 +99,21 @@ export default function CheckoutForm({
           Datos para recibir tu producto. El administrador los verá en tu pedido y podrá responderte por el chat privado.
         </p>
         <div className="field">
+          <label className="label" htmlFor="link">
+            Enlace o usuario del servicio <span className="muted tiny">(seguidores, likes, vistas…)</span>
+          </label>
+          <input
+            className="input"
+            id="link"
+            name="link"
+            placeholder="https://instagram.com/tu.cuenta"
+            maxLength={300}
+          />
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Obligatorio para servicios automáticos: es donde se entregará el pedido.
+          </p>
+        </div>
+        <div className="field">
           <label className="label" htmlFor="playerId">
             ID de jugador / Free Fire <span className="muted tiny">(si aplica)</span>
           </label>

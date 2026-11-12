@@ -66,7 +66,8 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
                     {line.name}
                   </Link>
                   <span className="list-item__meta">
-                    {line.categoryName} · {formatMoney(line.priceCents, settings.currency)} c/u
+                    {line.categoryName} · {formatMoney(line.priceCents, settings.currency)}
+                    {line.priceMode === 'PER_K' ? ' /1000' : ' c/u'}
                   </span>
 
                   <div className="row row--wrap" style={{ marginTop: 10, gap: 10 }}>
@@ -96,7 +97,9 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
                 </div>
 
                 <div className="amount">
-                  <strong className="mono">{formatMoney(line.priceCents * line.quantity, settings.currency)}</strong>
+                  <strong className="mono">
+                    {formatMoney(line.lineTotalCents ?? line.priceCents * line.quantity, settings.currency)}
+                  </strong>
                 </div>
               </div>
             ))}
