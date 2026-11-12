@@ -63,7 +63,9 @@ export const SYNC_TABLES: Record<string, SyncTableSpec> = {
       'active',
       'featured',
       'created_at',
-      'updated_at'
+      'updated_at',
+      'price',
+      'image_upload_id'
     ),
   },
   cart_items: {
