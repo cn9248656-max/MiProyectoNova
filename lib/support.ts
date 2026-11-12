@@ -47,13 +47,15 @@ function count(value: unknown): number {
 }
 
 /**
- * Limpia el texto recibido del formulario: elimina caracteres de control
- * (incluidos los usados para inyección de terminal/HTML) y limita la longitud.
+ * Limpia el texto recibido del formulario: elimina etiquetas y caracteres de
+ * control (usados para inyección de HTML/terminal) y limita la longitud.
  * El render de React ya escapa el HTML; esto añade la validación del servidor.
  */
 export function cleanText(value: unknown, max: number): string {
   if (typeof value !== 'string') return '';
   return value
+    .replace(/<[^>]*>/g, '')
+    .replace(/[<>]/g, '')
     .replace(/\r\n/g, '\n')
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
     .replace(/[ \t]{2,}/g, ' ')
