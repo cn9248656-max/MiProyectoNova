@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/admin/categorias', label: 'Categorías', icon: '❖' },
   { href: '/admin/pedidos', label: 'Pedidos', icon: '🧾' },
   { href: '/admin/mensajes', label: 'Mensajes', icon: '💬' },
+  { href: '/admin/soporte', label: 'Soporte', icon: '🎧' },
   { href: '/admin/recargas', label: 'Recargas', icon: '💳' },
   { href: '/admin/usuarios', label: 'Usuarios', icon: '👤' },
   { href: '/admin/solicitudes', label: 'Solicitudes', icon: '✉' },
@@ -17,7 +18,7 @@ const LINKS = [
   { href: '/admin/configuracion', label: 'Configuración', icon: '⚙' },
 ];
 
-export default function AdminNav({ unread, chatUnread = 0 }: { unread: number; chatUnread?: number }) {
+export default function AdminNav({ unread, chatUnread = 0, supportUnread = 0 }: { unread: number; chatUnread?: number; supportUnread?: number }) {
   const pathname = usePathname();
 
   return (
@@ -33,6 +34,9 @@ export default function AdminNav({ unread, chatUnread = 0 }: { unread: number; c
             ) : null}
             {link.href === '/admin/mensajes' && chatUnread > 0 ? (
               <span className="badge-dot" data-count={chatUnread} />
+            ) : null}
+            {link.href === '/admin/soporte' && supportUnread > 0 ? (
+              <span className="badge-dot" data-count={supportUnread} />
             ) : null}
           </Link>
         );

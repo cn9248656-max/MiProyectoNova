@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import './globals.css';
 import { getCurrentUser } from '../lib/auth';
 import { cartSummary, getSettings } from '../lib/store';
+import * as support from '../lib/support';
 import TopBar from '../components/TopBar';
 import BottomNav from '../components/BottomNav';
 
@@ -26,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await getCurrentUser();
   const settings = getSettings();
   const cart = user ? cartSummary(user.id) : { lines: [], totalCents: 0, itemCount: 0 };
+  const supportUnread = user ? support.unreadForUser(user.id) : 0;
 
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/registro');
   const isAdminArea = pathname.startsWith('/admin');
@@ -75,7 +77,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <>
               <TopBar user={user} settings={settings} />
               <main className="page">{children}</main>
-              <BottomNav cartCount={cart.itemCount} />
+              <BottomNav cartCount={cart.itemCount} supportUnread={supportUnread} />
             </>
           )}
         </div>

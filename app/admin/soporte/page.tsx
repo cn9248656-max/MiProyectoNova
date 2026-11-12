@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import SupportChat from '../../../components/SupportChat';
 import SupportSyncForm from '../../../components/SupportSyncForm';
+import { adminSetSupportStatusAction } from '../../support-actions';
 import { getCurrentUser } from '../../../lib/auth';
 import * as support from '../../../lib/support';
 import { getUserById } from '../../../lib/store';
@@ -146,13 +147,12 @@ export default async function AdminSupportPage({
 
                 <div className="row" style={{ gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                   {SUPPORT_STATUS_ORDER.map((status) => (
-                    <form key={status} action="/admin/soporte" method="post">
+                    <form key={status} action={adminSetSupportStatusAction}>
                       <input type="hidden" name="ticketId" value={selected.id} />
                       <input type="hidden" name="status" value={status} />
                       <button
                         className={`btn btn--sm${selected.status === status ? ' primary' : ' btn--ghost'}`}
                         type="submit"
-                        formAction={undefined}
                       >
                         {SUPPORT_STATUS_LABEL[status]}
                       </button>
