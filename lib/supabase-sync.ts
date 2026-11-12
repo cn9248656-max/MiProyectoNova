@@ -239,8 +239,9 @@ function clearPending(conn: Conn, pending: Pending): void {
   run();
 }
 
-function clearAllMarkers(conn: Conn): void {
-  conn.exec('delete from sync_dirty; delete from sync_deleted;');
+function clearTableMarkers(conn: Conn, table: string): void {
+  conn.prepare('delete from sync_dirty where table_name = ?').run(table);
+  conn.prepare('delete from sync_deleted where table_name = ?').run(table);
 }
 
 function buildPushOps(conn: Conn, pending: Pending): { ops: RemoteOp[]; tables: string[] } {
@@ -350,7 +351,7 @@ export function pushPendingSync(conn: Conn): SyncReport {
  * Restaura desde Supabase. Se llama al arrancar, antes de sembrar datos demo:
  * si el remoto tiene información, la local queda igual que la remota.
  */
-export function pullAllSync(conn: Conn): SyncReport {
+export function pullAllSync(conn: Conn, pushFirst = false): SyncReport {
   const report: SyncReport = { ok: true, tables: {}, errors: [] };
   if (!syncEnabled()) {
     report.ok = false;
@@ -358,10 +359,20 @@ export function pullAllSync(conn: Conn): SyncReport {
     return report;
   }
 
+  // En una restauración manual (panel de administración) primero se sube lo
+  // pendiente, para que una copia antigua de la nube no borre cambios recientes.
+  if (pushFirst) {
+    try {
+      pushPendingSync(conn);
+    } catch {
+      /* si el envío falla, la restauración continúa igual */
+    }
+  }
+  ensureSyncSchema(conn);
+
   const ops = SYNC_ORDER.map((table) => selectOp(table));
   const results = runOpsSync(ops, 25000);
 
-  let anyOk = false;
   results.forEach((result, index) => {
     const table = SYNC_ORDER[index];
     if (!result.ok) {
@@ -369,12 +380,14 @@ export function pullAllSync(conn: Conn): SyncReport {
       report.errors.push(`${table}: ${describeFailure(result)}`);
       return;
     }
-    anyOk = true;
     const rows = Array.isArray(result.data) ? (result.data as Array<Record<string, unknown>>) : [];
     report.tables[table] = applyRows(conn, table, rows);
+    // Solo se descartan los pendientes de las tablas que la nube ya tiene: si
+    // una tabla remota está vacía y la local tiene datos, esos datos se subirán
+    // en el siguiente envío en lugar de perderse.
+    if (rows.length > 0) clearTableMarkers(conn, table);
   });
 
-  if (anyOk) clearAllMarkers(conn);
   return report;
 }
 
