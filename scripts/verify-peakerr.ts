@@ -132,7 +132,8 @@ async function main() {
 
   // ---------- 5. Pedido pagado con saldo → envío automático ----------
   const user = store.createUser({ email: 'cliente@nova.local', name: 'Cliente Prueba', password: 'Prueba1234' });
-  const userId = (user as { user: { id: string } }).user?.id || (user as { id: string }).id;
+  if (!user.ok) throw new Error(`No se pudo crear el usuario de prueba: ${user.error}`);
+  const userId = user.user.id;
   db().prepare('UPDATE users SET balance_cents = 1000 WHERE id = ?').run(userId);
 
   const added = store.addToCart(userId, productId, 1);
