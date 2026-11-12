@@ -74,7 +74,21 @@ export function ensureSyncSchema(conn: Conn): void {
     );
   `);
 
+  const existingTables = new Set(
+    (conn.prepare("select name from sqlite_master where type = 'table'").all() as Array<{ name: string }>).map(
+      (row) => row.name
+    )
+  );
+  const existingTriggers = new Set(
+    (conn.prepare("select name from sqlite_master where type = 'trigger'").all() as Array<{ name: string }>).map(
+      (row) => row.name
+    )
+  );
+
   for (const [table, spec] of Object.entries(SYNC_TABLES)) {
+    // Una tabla que aún no existe (p. ej. soporte antes de su primer uso) no
+    // puede tener triggers: se omite y se activará en cuanto exista.
+    if (!existingTables.has(table)) continue;
     const pk = spec.pk.replace(/"/g, '""');
     conn.exec(`
       create trigger if not exists ${table}_sync_ins after insert on "${table}" begin
@@ -93,17 +107,52 @@ export function ensureSyncSchema(conn: Conn): void {
         on conflict (table_name) do update set marked_at = excluded.marked_at;
       end;
     `);
+
+    // Si la tabla se acaba de activar, se sube completa una vez: así ninguna
+    // fila creada antes del trigger queda fuera de Supabase.
+    if (!existingTriggers.has(`${table}_sync_ins`)) {
+      conn
+        .prepare(
+          `insert into sync_dirty (table_name, marked_at)
+           values (?, strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+           on conflict (table_name) do update set marked_at = excluded.marked_at`
+        )
+        .run(table);
+    }
   }
 }
 
+const columnCache = new Map<string, string[]>();
+
+/** Columnas que existen de verdad en la tabla local (nunca inventa ninguna). */
+function realColumns(conn: Conn, table: string): string[] {
+  const cached = columnCache.get(table);
+  if (cached) return cached;
+  try {
+    const names = (conn.prepare(`PRAGMA table_info("${table}")`).all() as Array<{ name: string }>).map(
+      (row) => row.name
+    );
+    if (names.length > 0) columnCache.set(table, names);
+    return names;
+  } catch {
+    return [];
+  }
+}
+
+function specColumns(conn: Conn, table: string): Array<{ name: string; hex?: boolean }> {
+  const real = new Set(realColumns(conn, table));
+  return SYNC_TABLES[table].columns.filter((column) => real.has(column.name));
+}
+
 function readRows(conn: Conn, table: string): Array<Record<string, unknown>> {
-  const spec = SYNC_TABLES[table];
-  const columnList = spec.columns.map((column) => `"${column.name}"`).join(', ');
+  const columns = specColumns(conn, table);
+  if (columns.length === 0) return [];
+  const columnList = columns.map((column) => `"${column.name}"`).join(', ');
   const rows = conn.prepare(`select ${columnList} from "${table}"`).all() as Array<Record<string, unknown>>;
 
   return rows.map((row) => {
     const payload: Record<string, unknown> = {};
-    for (const column of spec.columns) {
+    for (const column of columns) {
       const value = row[column.name];
       if (value === null || value === undefined) {
         payload[column.name] = null;
@@ -137,7 +186,8 @@ function normalizeValue(column: { hex?: boolean }, value: unknown): unknown {
 function applyRows(conn: Conn, table: string, rows: Array<Record<string, unknown>>): number {
   if (rows.length === 0) return 0;
   const spec = SYNC_TABLES[table];
-  const columns = spec.columns;
+  const columns = specColumns(conn, table);
+  if (columns.length === 0) return 0;
   const quoted = columns.map((column) => `"${column.name}"`).join(', ');
   const placeholders = columns.map((_, index) => `@v${index}`).join(', ');
   const updates = columns
@@ -239,6 +289,9 @@ export async function pushPending(conn: Conn): Promise<SyncReport> {
     report.errors.push('sincronización no configurada');
     return report;
   }
+
+  // Detecta tablas creadas después del arranque (por ejemplo soporte).
+  ensureSyncSchema(conn);
 
   const pending = collectPending(conn);
   if (pending.dirty.length === 0 && pending.deletes.length === 0) return report;
