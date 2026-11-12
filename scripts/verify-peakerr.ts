@@ -110,12 +110,25 @@ async function main() {
   rate = 0.8;
   await provider.syncServices();
   linked = provider.listLinkedProducts().find((item) => item.productId === productId);
-  const priceRow = db().prepare('SELECT price_cents, provider_cost_cents FROM products WHERE id = ?').get(productId) as {
+  let priceRow = db().prepare('SELECT price_cents, provider_cost_cents FROM products WHERE id = ?').get(productId) as {
     price_cents: number;
     provider_cost_cents: number;
   };
   check('re-sincronizar no sobrescribe mi precio de venta', priceRow.price_cents === 150, String(priceRow.price_cents));
-  check('el costo del proveedor sí se actualiza (80)', priceRow.provider_cost_cents === 80, String(priceRow.provider_cost_cents));
+  check('un costo ajustado a mano se conserva', priceRow.provider_cost_cents === 50, String(priceRow.provider_cost_cents));
+
+  // Con «seguir el costo del proveedor» activo el costo se refresca, el precio no.
+  provider.savePricing({ productId, saleCents: 150, costCents: 50, priceMode: 'UNIT', syncCost: true });
+  rate = 1.0;
+  await provider.syncServices();
+  priceRow = db().prepare('SELECT price_cents, provider_cost_cents FROM products WHERE id = ?').get(productId) as {
+    price_cents: number;
+    provider_cost_cents: number;
+  };
+  check('el costo sigue la nueva tarifa del proveedor (100)', priceRow.provider_cost_cents === 100, String(priceRow.provider_cost_cents));
+  check('seguir el costo no modifica mi precio de venta', priceRow.price_cents === 150, String(priceRow.price_cents));
+  linked = provider.listLinkedProducts().find((item) => item.productId === productId);
+  check('ganancia por unidad calculada (150 - 100)', linked?.saleCents === 150 && linked?.costCents === 100, JSON.stringify({ sale: linked?.saleCents, cost: linked?.costCents }));
 
   // ---------- 5. Pedido pagado con saldo → envío automático ----------
   const user = store.createUser({ email: 'cliente@nova.local', name: 'Cliente Prueba', password: 'Prueba1234' });
@@ -142,7 +155,7 @@ async function main() {
   const sent = provider.listProviderOrders(10).filter((row) => row.orderId === orderId);
   check('un único registro de proveedor por pedido', sent.length === 1, String(sent.length));
   check('ID externo guardado', sent[0]?.providerOrderId === String(externalSeq), String(sent[0]?.providerOrderId));
-  check('ganancia calculada (150 - 80)', sent[0]?.profitCents === 70, String(sent[0]?.profitCents));
+  check('ganancia calculada (150 - 100)', sent[0]?.profitCents === 50, String(sent[0]?.profitCents));
 
   // ---------- 6. Nunca se envía dos veces ----------
   const again = await provider.dispatchOrder(orderId);

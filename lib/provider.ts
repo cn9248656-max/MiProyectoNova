@@ -311,6 +311,12 @@ export async function syncServices(): Promise<{ added: number; updated: number; 
     `UPDATE provider_services SET name = ?, type = ?, category = ?, rate_cents = ?, min = ?, max = ?, synced_at = ?
      WHERE provider = ? AND service_id = ?`
   );
+  // Si el administrador activó «seguir el costo del proveedor» en un producto,
+  // refrescamos únicamente su costo. El precio de venta propio nunca se toca.
+  const syncCost = db().prepare(
+    `UPDATE products SET provider_cost_cents = ?, updated_at = ?
+     WHERE provider = ? AND provider_service_id = ? AND provider_sync_cost = 1`
+  );
 
   let added = 0;
   let updated = 0;
@@ -324,6 +330,7 @@ export async function syncServices(): Promise<{ added: number; updated: number; 
       const rateCents = Math.max(0, Math.round(Number(raw.rate ?? 0) * 100));
       const min = Math.max(0, Math.floor(Number(raw.min ?? 0)));
       const max = Math.max(0, Math.floor(Number(raw.max ?? 0)));
+      if (rateCents > 0) syncCost.run(rateCents, stamp, PROVIDER, serviceId);
       const exists = find.get(PROVIDER, serviceId) as { id?: string } | undefined;
       if (exists?.id) {
         update.run(name, type, category, rateCents, min, max, stamp, PROVIDER, serviceId);
