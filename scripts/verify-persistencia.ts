@@ -227,10 +227,12 @@ async function main(): Promise<void> {
     `precio ${String(product?.price_cents)} · stock ${String(product?.stock)}`
   );
 
-  const upload = B.prepare('select data from uploads where id = ?').get(`${PREFIX}upload`) as { data: Buffer } | undefined;
+  const uploadData = (
+    B.prepare('select data from uploads where id = ?').get(`${PREFIX}upload`) as { data: Buffer } | undefined
+  )?.data;
   check(
     'La imagen vuelve como binario idéntico',
-    Boolean(upload?.data) && Buffer.compare(upload.data, Buffer.from([137, 80, 78, 71])) === 0
+    Boolean(uploadData) && Buffer.compare(uploadData as Buffer, Buffer.from([137, 80, 78, 71])) === 0
   );
 
   const order = B.prepare('select * from orders where id = ?').get(`${PREFIX}order`) as Row | undefined;
