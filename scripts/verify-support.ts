@@ -8,7 +8,7 @@
  *
  * Uso: DATA_DIR=/tmp/nova-support-check tsx scripts/verify-support.ts
  */
-import { createUser, listNotifications } from '../lib/store';
+import { createUser, listNotifications, listUsers } from '../lib/store';
 import * as support from '../lib/support';
 
 let checks = 0;
@@ -29,14 +29,26 @@ async function main() {
     fail('Ejecuta con DATA_DIR apuntando a una carpeta temporal para no tocar datos reales.');
   }
 
-  const admin = createUser({ email: 'admin@nova.test', name: 'Admin Soporte', password: 'secreto123' });
-  if (!admin.ok) fail(admin.error);
-  check(admin.user.role === 'ADMIN', 'El primer usuario es administrador');
+  // La base temporal puede conservar datos de una ejecución anterior: se reutiliza
+  // el administrador existente y se crean clientes con correos únicos.
+  const stamp = Date.now().toString(36);
+  let adminUser = listUsers().find((user) => user.role === 'ADMIN') ?? null;
+  if (!adminUser) {
+    const created = createUser({ email: `admin-${stamp}@nova.test`, name: 'Admin Soporte', password: 'secreto123' });
+    if (!created.ok) fail(created.error);
+    adminUser = created.user;
+  }
+  const admin = { user: adminUser };
+  check(admin.user.role === 'ADMIN', 'El usuario administrador tiene rol ADMIN');
 
-  const ana = createUser({ email: 'ana@nova.test', name: 'Ana Cliente', password: 'secreto123' });
+  const ana = createUser({ email: `ana-${stamp}@nova.test`, name: 'Ana Cliente', password: 'secreto123' });
   if (!ana.ok) fail(ana.error);
-  const luis = createUser({ email: 'luis@nova.test', name: 'Luis Cliente', password: 'secreto123' });
+  const luis = createUser({ email: `luis-${stamp}@nova.test`, name: 'Luis Cliente', password: 'secreto123' });
   if (!luis.ok) fail(luis.error);
+
+  const baseCounts = support.supportStatusCounts();
+  const baseTotal = support.supportSummary().total;
+  const baseAdminUnread = support.unreadForAdmin();
 
   /* --------------------------- Crear solicitudes --------------------------- */
 
@@ -110,7 +122,11 @@ async function main() {
   check(support.unreadForUser(ana.user.id) === 0, 'Ana marca la respuesta como leída');
 
   support.markReadForAdmin(ticketA.ticket.id);
-  check(support.unreadForAdmin() === 0, 'El administrador marca la conversación como leída');
+  support.markReadForAdmin(ticketB.ticket.id);
+  check(
+    support.unreadForAdmin() === baseAdminUnread,
+    'El administrador marca la conversación como leída'
+  );
 
   /* -------------------------- Estados y reapertura ------------------------- */
 
@@ -127,7 +143,10 @@ async function main() {
   check(reopen.status === 'IN_PROGRESS', 'Si el cliente responde, la solicitud resuelta se reabre');
 
   const counts = support.supportStatusCounts();
-  check(counts.PENDING === 1 && counts.IN_PROGRESS === 1, 'Los contadores por estado son correctos');
+  check(
+    counts.PENDING === baseCounts.PENDING + 1 && counts.IN_PROGRESS === baseCounts.IN_PROGRESS + 1,
+    'Los contadores por estado son correctos'
+  );
 
   /* ------------------------------- Validación ------------------------------ */
 
@@ -164,7 +183,7 @@ async function main() {
   check(stored.every((message) => message.ticketId === ticketA.ticket.id), 'Los mensajes pertenecen a su solicitud');
 
   const summary = support.supportSummary();
-  check(summary.total === 2, 'El resumen del panel cuenta las dos solicitudes');
+  check(summary.total === baseTotal + 2, 'El resumen del panel cuenta las dos solicitudes nuevas');
 
   console.log(`\nSoporte al cliente: ${checks} comprobaciones correctas.`);
 }
