@@ -4,6 +4,7 @@ import OrderDeliveryForm from '../../../components/OrderDeliveryForm';
 import { getCurrentUser } from '../../../lib/auth';
 import { formatDate, formatMoney } from '../../../lib/money';
 import { getOrder, getSettings } from '../../../lib/store';
+import { PROVIDER_STATUS_LABEL, listOrderProviderInfo } from '../../../lib/provider';
 import { ORDER_STATUS_FLOW, ORDER_STATUS_LABEL, PAYMENT_METHOD_LABEL } from '../../../lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,7 @@ export default async function OrderDetailPage({
   const settings = getSettings();
   const flow = order.status === 'CANCELLED' ? ['PENDING', 'CANCELLED'] : ORDER_STATUS_FLOW;
   const currentIndex = flow.indexOf(order.status);
+  const providerInfo = listOrderProviderInfo(order.id);
 
   return (
     <div className="stack" style={{ gap: 22 }}>
@@ -80,6 +82,34 @@ export default async function OrderDetailPage({
                   : 'Este pedido fue cancelado. Si tienes dudas, contacta al administrador.'}
         </p>
       </section>
+
+      {providerInfo.length > 0 ? (
+        <section className="card">
+          <h2 className="card__title">Progreso del servicio</h2>
+          <div className="stack" style={{ gap: 10 }}>
+            {providerInfo.map((item) => (
+              <div key={item.id} className="row row--between">
+                <div>
+                  <strong>Servicio {item.serviceId}</strong>
+                  <div className="tiny muted">
+                    {item.quantity} unidades · {item.link || 'sin enlace'}
+                  </div>
+                  {item.remains !== null ? <div className="tiny muted">Faltan {item.remains}</div> : null}
+                  {item.error ? (
+                    <div className="tiny" style={{ color: '#ff8f8f' }}>
+                      {item.error}
+                    </div>
+                  ) : null}
+                </div>
+                <span className="status">{PROVIDER_STATUS_LABEL[item.status] || item.status}</span>
+              </div>
+            ))}
+          </div>
+          <p className="hint" style={{ marginBottom: 0 }}>
+            Este pedido se entrega mediante un proveedor externo y su estado se actualiza automáticamente.
+          </p>
+        </section>
+      ) : null}
 
       <div className="grid-2">
         <section className="card">
