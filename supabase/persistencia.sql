@@ -234,7 +234,7 @@ begin
   foreach t in array array[
     'users','categories','uploads','products','cart_items','orders','order_items',
     'topups','wallet_transactions','settings','product_requests','notifications',
-    'conversations','messages','support_tickets','support_messages'
+    'conversations','messages','support_tickets','support_messages','sip_transactions'
   ]
   loop
     execute format('alter table public.%I enable row level security', t);
@@ -321,7 +321,7 @@ begin
   if p_table is null or not (p_table = any (array[
     'users','categories','uploads','products','cart_items','orders','order_items',
     'topups','wallet_transactions','settings','product_requests','notifications',
-    'conversations','messages','support_tickets','support_messages'
+    'conversations','messages','support_tickets','support_messages','sip_transactions'
   ])) then
     raise exception 'nova_upsert: tabla no permitida' using errcode = '42501';
   end if;
@@ -376,7 +376,7 @@ begin
   if p_table is null or not (p_table = any (array[
     'users','categories','uploads','products','cart_items','orders','order_items',
     'topups','wallet_transactions','settings','product_requests','notifications',
-    'conversations','messages','support_tickets','support_messages'
+    'conversations','messages','support_tickets','support_messages','sip_transactions'
   ])) then
     raise exception 'nova_select: tabla no permitida' using errcode = '42501';
   end if;
@@ -403,7 +403,7 @@ begin
   if p_table is null or not (p_table = any (array[
     'users','categories','uploads','products','cart_items','orders','order_items',
     'topups','wallet_transactions','settings','product_requests','notifications',
-    'conversations','messages','support_tickets','support_messages'
+    'conversations','messages','support_tickets','support_messages','sip_transactions'
   ])) then
     raise exception 'nova_delete: tabla no permitida' using errcode = '42501';
   end if;
@@ -440,6 +440,40 @@ grant execute on function public.nova_upsert(text, text, jsonb) to anon, authent
 grant execute on function public.nova_select(text, text, integer) to anon, authenticated;
 grant execute on function public.nova_delete(text, text, jsonb) to anon, authenticated;
 grant execute on function public.nova_bootstrap_secret(text) to anon, authenticated;
+
+
+-- 9) Recargas Sip (aditivo): columnas nuevas y operaciones recibidas --------
+
+alter table public.topups add column if not exists sip_code          text;
+alter table public.topups add column if not exists sip_method        text;
+alter table public.topups add column if not exists sip_operation     text;
+alter table public.topups add column if not exists sip_transaction_id text;
+alter table public.topups add column if not exists credited_at       text;
+
+create table if not exists public.sip_transactions (
+  id               text primary key,
+  operation_number text not null,
+  amount_cents     integer not null,
+  reference_code   text,
+  sender_name      text,
+  sender_phone     text,
+  note             text,
+  source           text not null default 'WEBHOOK',
+  raw_payload      text,
+  status           text not null default 'PENDING',
+  user_id          text,
+  applied_topup_id text,
+  applied_at       text,
+  created_at       text not null,
+  updated_at       text not null
+);
+
+create unique index if not exists sip_transactions_operation_key on public.sip_transactions (operation_number);
+create index if not exists sip_transactions_status_idx on public.sip_transactions (status, created_at);
+create index if not exists topups_sip_code_idx on public.topups (sip_code);
+
+alter table public.sip_transactions enable row level security;
+revoke all on public.sip_transactions from anon, authenticated;
 
 -- Fin. NovaStore sigue usando su base local como caché rápida y Supabase como
 -- almacenamiento permanente: cada cambio se replica y, al arrancar un
