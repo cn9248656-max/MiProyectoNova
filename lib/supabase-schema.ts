@@ -107,7 +107,32 @@ export const SYNC_TABLES: Record<string, SyncTableSpec> = {
       'admin_note',
       'created_at',
       'reviewed_at',
-      'reviewed_by'
+      'reviewed_by',
+      'sip_code',
+      'sip_method',
+      'sip_operation',
+      'sip_transaction_id',
+      'credited_at'
+    ),
+  },
+  sip_transactions: {
+    pk: 'id',
+    columns: cols(
+      'id',
+      'operation_number',
+      'amount_cents',
+      'reference_code',
+      'sender_name',
+      'sender_phone',
+      'note',
+      'source',
+      'status',
+      'applied_topup_id',
+      'user_id',
+      'raw_payload',
+      'received_at',
+      'created_at',
+      'applied_at'
     ),
   },
   wallet_transactions: {
@@ -193,6 +218,7 @@ export const SYNC_ORDER: string[] = [
   'orders',
   'order_items',
   'topups',
+  'sip_transactions',
   'wallet_transactions',
   'product_requests',
   'notifications',
