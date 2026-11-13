@@ -6,6 +6,7 @@ import { createSnapshot, listBackups } from './backup';
 import { restoreCatalogOnBoot } from './catalog-recovery';
 import { ensureSyncSchema, pullAllSync, pushPendingSync, startSyncLoop } from './supabase-sync';
 import { ensureProviderSchema } from './provider-schema';
+import { ensureSipSchema } from './sip-schema';
 
 export type DB = Database.Database;
 
@@ -34,6 +35,7 @@ export function db(): DB {
   if (existed) protectBeforeMigration(conn);
   migrate(conn);
   ensureProviderSchema(conn);
+  ensureSipSchema(conn);
   // Persistencia permanente: primero se preparan los triggers de sincronización
   // y después se restauran los datos desde Supabase ANTES de sembrar nada, de
   // modo que un contenedor nuevo recupera usuarios, pedidos, conversaciones y
@@ -146,9 +148,18 @@ const EXPECTED_TABLES = [
   'notifications',
   'conversations',
   'messages',
+  'sip_transactions',
 ];
 
-const EXPECTED_COLUMNS: Array<[string, string]> = [['orders', 'customer_data']];
+const EXPECTED_COLUMNS: Array<[string, string]> = [
+  ['orders', 'customer_data'],
+  // Recargas Sip: columnas aditivas. La copia de seguridad previa se crea sola.
+  ['topups', 'sip_code'],
+  ['topups', 'sip_method'],
+  ['topups', 'sip_operation'],
+  ['topups', 'sip_transaction_id'],
+  ['topups', 'credited_at'],
+];
 
 /** Cambios de esquema pendientes sobre una base ya existente (solo aditivos). */
 function pendingChanges(conn: DB): string[] {

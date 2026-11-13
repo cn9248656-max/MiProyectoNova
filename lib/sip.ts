@@ -356,7 +356,7 @@ export function getSipTopup(topupId: string): Topup | null {
        FROM topups t WHERE t.id = ?`
     )
     .get(topupId) as Row | undefined;
-  return row ? store.mapTopupRow(row) : null;
+  return row ? store.mapTopup(row) : null;
 }
 
 /**
