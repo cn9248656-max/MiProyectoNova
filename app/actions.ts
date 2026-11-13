@@ -6,6 +6,7 @@ import { clearSessionCookie, getAdminUser, getCurrentUser, setSessionCookie } fr
 import { parseAmountToCents } from '../lib/money';
 import * as chat from '../lib/chat';
 import * as backups from '../lib/backup-db';
+import * as sip from '../lib/sip';
 import * as store from '../lib/store';
 import type { ActionState, OrderStatus, PaymentMethod } from '../lib/types';
 
@@ -185,6 +186,153 @@ export async function topupAction(_prev: ActionState, formData: FormData): Promi
   return {
     success: 'Solicitud enviada. El saldo se acreditará cuando el administrador apruebe el comprobante.',
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* Recargas Sip (Yape / Plin / Sip → cuenta Sip)                      */
+/* ------------------------------------------------------------------ */
+
+/** Guarda el comprobante opcional de una recarga Sip. */
+async function saveSipReceipt(
+  formData: FormData
+): Promise<{ ok: true; id: string | null } | { ok: false; error: string }> {
+  const receipt = formData.get('receipt');
+  if (!(receipt instanceof File) || receipt.size === 0) return { ok: true, id: null };
+  if (!receipt.type.startsWith('image/')) return { ok: false, error: 'El comprobante debe ser una imagen.' };
+  if (receipt.size > 5 * 1024 * 1024) return { ok: false, error: 'El comprobante no debe superar 5 MB.' };
+  const savedId = store.saveUpload(receipt.type, Buffer.from(await receipt.arrayBuffer()));
+  return { ok: true, id: savedId };
+}
+
+/** Paso 1: el cliente pide la recarga y recibe su código único NOVA####. */
+export async function sipTopupAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Inicia sesión para solicitar una recarga.' };
+
+  const amountCents = parseAmountToCents(str(formData, 'amount'));
+  if (amountCents === null) return { error: 'Escribe un monto válido.' };
+
+  const receipt = await saveSipReceipt(formData);
+  if (!receipt.ok) return { error: receipt.error };
+
+  const result = sip.createSipTopup(user.id, {
+    amountCents,
+    method: str(formData, 'sipMethod'),
+    receiptId: receipt.id,
+  });
+  if (!result.ok) return { error: result.error };
+
+  revalidatePath('/saldo');
+  revalidatePath('/admin/recargas');
+  revalidatePath('/admin');
+  return {
+    success: `Solicitud creada. Transfiere a la cuenta Sip usando el código ${result.code} como referencia.`,
+    code: result.code,
+    topupId: result.id,
+  };
+}
+
+/** Paso 2: el cliente informa el número de operación de su transferencia. */
+export async function sipOperationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'Inicia sesión para continuar.' };
+
+  const topupId = str(formData, 'topupId');
+  if (!topupId) return { error: 'No encontramos tu solicitud de recarga. Vuelve a generarla.' };
+
+  const receipt = await saveSipReceipt(formData);
+  if (!receipt.ok) return { error: receipt.error };
+
+  const result = sip.attachSipOperation({
+    topupId,
+    userId: user.id,
+    operation: str(formData, 'operation'),
+    receiptId: receipt.id,
+  });
+  if (!result.ok) return { error: result.error || 'No se pudo registrar la operación.' };
+
+  revalidatePath('/saldo');
+  revalidatePath('/admin/recargas');
+  return { success: result.message || 'Operación registrada.', topupId };
+}
+
+/** Panel: guarda los datos de la cuenta Sip y las credenciales (cifradas). */
+export async function sipSettingsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireAdmin();
+
+  const result = sip.saveSipSettings({
+    holder: str(formData, 'holder'),
+    number: str(formData, 'number'),
+    alias: str(formData, 'alias'),
+    cci: str(formData, 'cci'),
+    note: str(formData, 'note'),
+    auto: str(formData, 'auto') === 'on',
+    apiUrl: str(formData, 'apiUrl'),
+    apiKey: str(formData, 'apiKey'),
+    clearApiKey: str(formData, 'clearApiKey') === 'on',
+    webhookSecret: str(formData, 'webhookSecret'),
+    generateWebhookSecret: str(formData, 'generateWebhookSecret') === 'on',
+  });
+
+  if (!result.ok) return { error: result.error || 'No se pudo guardar la configuración Sip.' };
+
+  revalidatePath('/admin/configuracion');
+  revalidatePath('/saldo');
+
+  const secret = result.webhookSecret;
+  return {
+    success: secret
+      ? `Configuración guardada. Secreto del webhook generado: ${secret} — cópialo ahora, no se vuelve a mostrar.`
+      : 'Configuración Sip guardada correctamente.',
+  };
+}
+
+/** Panel: registra un dinero realmente recibido en la cuenta Sip (verificación manual). */
+export async function sipRegisterTransactionAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+
+  const amountCents = sip.parseAmountToCents(str(formData, 'amount'));
+  if (amountCents === null) fail('/admin/recargas', 'Escribe el monto recibido en la cuenta Sip.');
+
+  const result = sip.registerSipTransaction({
+    operationNumber: str(formData, 'operation'),
+    amountCents: amountCents as number,
+    referenceCode: str(formData, 'sipCode'),
+    senderName: str(formData, 'senderName'),
+    senderPhone: str(formData, 'senderPhone'),
+    note: str(formData, 'note'),
+    source: 'ADMIN',
+  });
+
+  if (!result.ok) fail('/admin/recargas', result.error || 'No se pudo registrar la operación.');
+
+  revalidatePath('/admin/recargas');
+  revalidatePath('/saldo');
+
+  if (result.duplicate) back('/admin/recargas', 'Esa operación ya estaba registrada. No se acreditó dos veces.');
+  if (result.status === 'APPLIED') back('/admin/recargas', 'Pago verificado y saldo acreditado al cliente.');
+  if (result.status === 'AMOUNT_MISMATCH') {
+    back('/admin/recargas', 'Operación registrada, pero el monto no coincide con la recarga del código. Revisa antes de aprobar.');
+  }
+  back('/admin/recargas', 'Operación registrada. No se encontró una recarga con ese código; puedes aprobarla manualmente.');
+}
+
+/** Panel: intenta verificar (y acreditar) una recarga Sip concreta. */
+export async function sipVerifyAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const topupId = str(formData, 'topupId');
+  if (!topupId) fail('/admin/recargas', 'Recarga no indicada.');
+
+  const result = sip.verifySipTopup(topupId);
+  revalidatePath('/admin/recargas');
+  revalidatePath('/saldo');
+
+  if (!result.ok) fail('/admin/recargas', result.error || 'No se pudo verificar la recarga.');
+  if (result.credited) back('/admin/recargas', 'Pago confirmado: el saldo fue acreditado automáticamente.');
+  back(
+    '/admin/recargas',
+    'Todavía no hay una transferencia confirmada con ese código. Registra la operación recibida o espera el webhook de Sip.'
+  );
 }
 
 /* ------------------------------------------------------------------ */
