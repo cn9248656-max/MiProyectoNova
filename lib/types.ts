@@ -1,6 +1,6 @@
 /** Tipos puros compartidos entre servidor y cliente (sin dependencias de Node). */
 
-export type ActionState = { error?: string; success?: string } | null;
+export type ActionState = { error?: string; success?: string; code?: string; topupId?: string } | null;
 
 export type Role = 'USER' | 'ADMIN';
 export type OrderStatus = 'PENDING' | 'APPROVED' | 'SENT' | 'COMPLETED' | 'CANCELLED';
@@ -104,7 +104,67 @@ export interface Topup {
   reviewedAt: string | null;
   userName?: string;
   userEmail?: string;
+  /** Recargas Sip: código único NOVA####, medio de origen y operación declarada. */
+  sipCode?: string | null;
+  sipMethod?: string | null;
+  sipOperation?: string | null;
+  sipTransactionId?: string | null;
+  creditedAt?: string | null;
 }
+
+/** Estado de una operación de dinero realmente recibida en la cuenta Sip. */
+export type SipTransactionStatus = 'RECEIVED' | 'MATCHED' | 'APPLIED' | 'AMOUNT_MISMATCH' | 'UNMATCHED' | 'REJECTED';
+
+export interface SipTransaction {
+  id: string;
+  operationNumber: string;
+  amountCents: number;
+  referenceCode: string;
+  senderName: string;
+  senderPhone: string;
+  note: string;
+  source: string;
+  status: SipTransactionStatus;
+  appliedTopupId: string | null;
+  userId: string | null;
+  receivedAt: string;
+  createdAt: string;
+  appliedAt: string | null;
+}
+
+/** Datos de la cuenta Sip que se muestran al cliente (nunca secretos). */
+export interface SipAccount {
+  holder: string;
+  number: string;
+  alias: string;
+  cci: string;
+  note: string;
+  auto: boolean;
+}
+
+export interface SipStatus extends SipAccount {
+  configured: boolean;
+  apiUrl: string;
+  hasApiKey: boolean;
+  hasWebhookSecret: boolean;
+  webhookPath: string;
+}
+
+export const SIP_TRANSACTION_LABEL: Record<SipTransactionStatus, string> = {
+  RECEIVED: 'Recibida',
+  MATCHED: 'Verificada',
+  APPLIED: 'Acreditada',
+  AMOUNT_MISMATCH: 'Monto no coincide',
+  UNMATCHED: 'Sin recarga asociada',
+  REJECTED: 'Rechazada',
+};
+
+export const SIP_METHOD_LABELS: Record<string, string> = {
+  YAPE: 'Yape',
+  PLIN: 'Plin',
+  SIP: 'Sip',
+  OTRO: 'Otra transferencia',
+};
 
 export interface WalletTx {
   id: string;
