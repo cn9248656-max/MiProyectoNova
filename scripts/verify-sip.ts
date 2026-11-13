@@ -179,10 +179,10 @@ async function main() {
     check('no acredita sin operación registrada', nothing.ok === false && store.getUserById(user.id)!.balanceCents === balanceBefore + 2000);
 
     sip.registerSipTransaction({ operationNumber: 'OP-0005', amountCents: 1000, referenceCode: manual.code, source: 'ADMIN' });
-    const verified = sip.verifySipTopup(manual.id);
-    check('acredita al verificar la operación', verified.credited === true);
-    check('el saldo suma la recarga verificada', store.getUserById(user.id)!.balanceCents === balanceBefore + 3000);
+    check('acredita la operación registrada por el administrador', store.getUserById(user.id)!.balanceCents === balanceBefore + 3000);
     check('la recarga verificada queda aprobada', sip.getSipTopup(manual.id)?.status === 'APPROVED');
+    const verified = sip.verifySipTopup(manual.id);
+    check('no duplica el saldo al verificar de nuevo', verified.ok === true && verified.credited === false);
   }
 
   const pendingTopup = sip.createSipTopup(user.id, { amountCents: 800, method: 'SIP' });
@@ -213,7 +213,7 @@ async function main() {
   check('las operaciones Sip siguen guardadas', transactionsAfter.length === 5, String(transactionsAfter.length));
   check('los códigos siguen disponibles', topupsAfter.every((topup) => Boolean(topup.sipCode)));
   check('la configuración Sip persiste', sip.getSipStatus().holder === 'NovaStore SAC');
-  check('el saldo persiste', store.getUserById(user.id)!.balanceCents === 4800, String(store.getUserById(user.id)!.balanceCents));
+  check('el saldo persiste', store.getUserById(user.id)!.balanceCents === 3800, String(store.getUserById(user.id)!.balanceCents));
 
   console.log(`\n${results.length} comprobaciones Sip OK`);
 }
