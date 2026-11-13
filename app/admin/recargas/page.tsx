@@ -2,7 +2,7 @@ import { reviewTopupAction, sipRegisterTransactionAction, sipVerifyAction } from
 import { formatDate, formatMoney } from '../../../lib/money';
 import { listSipTransactions, sipSummary, sipTransactionForTopup } from '../../../lib/sip';
 import { getSettings, listAllTopups } from '../../../lib/store';
-import { SIP_METHOD_LABEL, SIP_TRANSACTION_LABEL, TOPUP_STATUS_LABEL } from '../../../lib/types';
+import { SIP_METHOD_LABELS, SIP_TRANSACTION_LABEL, TOPUP_STATUS_LABEL } from '../../../lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -113,7 +113,7 @@ export default async function AdminTopupsPage({
                       {topup.sipCode ? (
                         <div className="tiny" style={{ marginTop: 4 }}>
                           Código: <strong className="mono">{topup.sipCode}</strong>
-                          {topup.sipMethod ? ` · ${SIP_METHOD_LABEL[topup.sipMethod] || topup.sipMethod}` : ''}
+                          {topup.sipMethod ? ` · ${SIP_METHOD_LABELS[topup.sipMethod] || topup.sipMethod}` : ''}
                         </div>
                       ) : null}
                       {topup.sipOperation ? (
@@ -320,7 +320,7 @@ export default async function AdminTopupsPage({
                     <td className="tiny">
                       {topup.method === 'SIP'
                         ? topup.sipMethod
-                          ? SIP_METHOD_LABEL[topup.sipMethod] || topup.sipMethod
+                          ? SIP_METHOD_LABELS[topup.sipMethod] || topup.sipMethod
                           : 'Sip'
                         : 'Agora'}
                     </td>
