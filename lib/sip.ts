@@ -508,9 +508,9 @@ export function reconcileSipTransaction(transactionId: string): {
 
     const approve = db()
       .prepare(
-        "UPDATE topups SET status='APPROVED', sip_transaction_id=?, reviewed_at=?, admin_note=? WHERE id=? AND status='PENDING'"
+        "UPDATE topups SET status='APPROVED', sip_transaction_id=?, sip_operation=COALESCE(NULLIF(sip_operation,''), ?), reviewed_at=?, admin_note=? WHERE id=? AND status='PENDING'"
       )
-      .run(transactionId, now(), `Acreditado automáticamente por Sip (operación ${operation})`, str(topup.id));
+      .run(transactionId, operation, now(), `Acreditado automáticamente por Sip (operación ${operation})`, str(topup.id));
     if (approve.changes !== 1) throw new SipError('La recarga ya fue procesada.');
 
     const credit = store.creditTopupOnce(str(topup.id), `Recarga Sip confirmada (${str(topup.sip_code)})`);
