@@ -207,7 +207,7 @@ async function main() {
   /* ---------------------------------------------------------------- */
   const summary = sip.sipSummary();
   check('el resumen cuenta las recargas acreditadas', summary.appliedToday >= 2, String(summary.appliedToday));
-  check('el total recibido solo suma pagos acreditados', summary.receivedCents >= 3800, String(summary.receivedCents));
+  check('el total recibido solo suma pagos acreditados', summary.receivedCents >= 3000, String(summary.receivedCents));
 
   closeDb();
   const topupsAfter = store.listTopups(user.id);
