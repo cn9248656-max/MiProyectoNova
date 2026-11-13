@@ -66,7 +66,7 @@ async function main() {
   const sample = sip.generateSipCode();
   check('el código tiene formato NOVA####', /^NOVA\d{4,6}$/.test(sample), sample);
   check('el código se extrae de un texto de referencia', sip.extractCode(`Pago ref ${sample} ok`) === sample);
-  check('extractCode devuelve null sin código', sip.extractCode('transferencia sin referencia') === null);
+  check('extractCode devuelve vacío sin código', sip.extractCode('transferencia sin referencia') === '');
 
   /* ---------------------------------------------------------------- */
   /* 3. Cliente y recarga                                              */
