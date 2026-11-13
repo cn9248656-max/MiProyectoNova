@@ -4,7 +4,7 @@ import { getCurrentUser } from '../../lib/auth';
 import { formatDate, formatMoney } from '../../lib/money';
 import { getSipAccount } from '../../lib/sip';
 import { getSettings, listTopups } from '../../lib/store';
-import { SIP_METHOD_LABEL, TOPUP_STATUS_LABEL } from '../../lib/types';
+import { SIP_METHOD_LABELS, TOPUP_STATUS_LABEL } from '../../lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,7 +114,7 @@ export default async function BalancePage() {
                   <span className="list-item__meta">
                     {formatDate(topup.createdAt)}
                     {topup.sipCode ? ` · Código ${topup.sipCode}` : ''}
-                    {topup.sipMethod ? ` · ${SIP_METHOD_LABEL[topup.sipMethod] || topup.sipMethod}` : ''}
+                    {topup.sipMethod ? ` · ${SIP_METHOD_LABELS[topup.sipMethod] || topup.sipMethod}` : ''}
                     {topup.reference && !topup.sipCode ? ` · Ref. ${topup.reference}` : ''}
                   </span>
                   {topup.sipOperation ? (

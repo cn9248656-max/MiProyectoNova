@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { normalizeSipPayload, registerSipTransaction, verifyWebhookSecret, webhookSecret } from '../../../lib/sip';
+import { normalizeSipPayload, registerSipTransaction, verifyWebhookSecret, webhookSecret } from '../../../../lib/sip';
 
 export const dynamic = 'force-dynamic';
 
