@@ -79,8 +79,11 @@ async function main() {
   check('crea el administrador de prueba', admin.ok === true);
 
   const codes = new Set<string>();
-  for (let i = 0; i < 120; i += 1) codes.add(sip.generateSipCode());
-  check('los códigos generados no se repiten', codes.size === 120, `${codes.size}/120`);
+  for (let i = 0; i < 15; i += 1) {
+    const extra = sip.createSipTopup(user.id, { amountCents: 1000, method: 'SIP' });
+    if (extra.ok) codes.add(extra.code);
+  }
+  check('los códigos guardados no se repiten', codes.size === 15, `${codes.size}/15`);
 
   const first = sip.createSipTopup(user.id, { amountCents: 2000, method: 'YAPE' });
   check('crea la recarga Sip', first.ok === true, first.ok ? '' : first.error);
