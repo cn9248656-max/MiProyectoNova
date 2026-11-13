@@ -587,6 +587,40 @@ function creditWalletInTx(
   return balance;
 }
 
+/**
+ * Acredita el saldo de una recarga ya aprobada, una sola vez.
+ * Si la recarga ya tiene un movimiento de billetera no vuelve a sumar saldo:
+ * así se evita cualquier acreditación duplicada.
+ */
+export function creditTopupOnce(
+  topupId: string,
+  description: string
+): { ok: boolean; error?: string; alreadyCredited?: boolean } {
+  const run = db().transaction(() => {
+    const row = db().prepare('SELECT * FROM topups WHERE id = ?').get(topupId) as Row | undefined;
+    if (!row) return { ok: false as const, error: 'Recarga no encontrada.' };
+    if (str(row.status) !== 'APPROVED') return { ok: false as const, error: 'La recarga todavía no está aprobada.' };
+
+    const credited = db()
+      .prepare('SELECT id FROM wallet_transactions WHERE topup_id = ? AND amount_cents > 0 LIMIT 1')
+      .get(topupId) as Row | undefined;
+    if (credited) {
+      db().prepare('UPDATE topups SET credited_at = COALESCE(credited_at, ?) WHERE id = ?').run(now(), topupId);
+      return { ok: true as const, alreadyCredited: true };
+    }
+
+    creditWalletInTx(str(row.user_id), num(row.amount_cents), 'TOPUP', description, { topupId });
+    db().prepare('UPDATE topups SET credited_at = ? WHERE id = ?').run(now(), topupId);
+    return { ok: true as const };
+  });
+
+  try {
+    return run.immediate() as { ok: boolean; error?: string; alreadyCredited?: boolean };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'No se pudo acreditar la recarga.' };
+  }
+}
+
 export function listWallet(userId: string, limit = 60): WalletTx[] {
   const rows = db()
     .prepare('SELECT * FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?')
@@ -945,7 +979,7 @@ export function updateOrderStatus(
 /* Recargas (Agora)                                                   */
 /* ------------------------------------------------------------------ */
 
-function mapTopup(row: Row): Topup {
+export function mapTopup(row: Row): Topup {
   return {
     id: str(row.id),
     userId: str(row.user_id),
@@ -959,6 +993,11 @@ function mapTopup(row: Row): Topup {
     reviewedAt: (row.reviewed_at as string | null) ?? null,
     userName: row.user_name ? str(row.user_name) : undefined,
     userEmail: row.user_email ? str(row.user_email) : undefined,
+    creditedAt: (row.credited_at as string | null) ?? null,
+    sipCode: (row.sip_code as string | null) ?? null,
+    sipMethod: (row.sip_method as string | null) ?? null,
+    sipOperation: (row.sip_operation as string | null) ?? null,
+    sipTransactionId: (row.sip_transaction_id as string | null) ?? null,
   };
 }
 
@@ -1041,7 +1080,27 @@ export function reviewTopup(
 
     if (decision === 'APPROVED') {
       const amount = num(row.amount_cents);
-      creditWalletInTx(str(row.user_id), amount, 'TOPUP', 'Recarga aprobada por Agora', { topupId });
+      const method = str(row.method, 'AGORA');
+      const code = str(row.sip_code);
+      const label = method === 'SIP' ? 'Sip' : 'Agora';
+      creditWalletInTx(
+        str(row.user_id),
+        amount,
+        'TOPUP',
+        `Recarga aprobada por ${label}${code ? ` (${code})` : ''}`,
+        { topupId }
+      );
+      db().prepare('UPDATE topups SET credited_at = ? WHERE id = ?').run(now(), topupId);
+
+      // Si el administrador aprueba una recarga Sip, la operación recibida queda
+      // marcada como acreditada para que el webhook no la vuelva a aplicar.
+      if (code) {
+        db()
+          .prepare(
+            "UPDATE sip_transactions SET status='APPLIED', applied_topup_id = ?, applied_at = COALESCE(applied_at, ?) WHERE applied_topup_id IS NULL AND (reference_code LIKE ? OR operation_number = ?)"
+          )
+          .run(topupId, now(), `%${code}%`, str(row.sip_operation) || '-');
+      }
     }
     return { ok: true };
   });
